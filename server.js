@@ -180,7 +180,7 @@ const checkUserCode = async (req, res, next) => {
 
 const sendWebhookNotification = async (userName, fileName) => {
     try {
-        const messageText = `🖨️ *Nowy dokument do druku (Printy)!*\n👤 Użytkownik: ${userName}\n📄 Plik: ${fileName}`;
+        const messageText = `🖨️ *Nowy dokument do druku (printy)!*\n👤 Użytkownik: ${userName}\n📄 Plik: ${fileName}`;
         
         // 1. WhatsApp poprzez darmowe API CallMeBot
         if (process.env.WHATSAPP_PHONE && process.env.WHATSAPP_APIKEY) {
@@ -424,5 +424,5 @@ app.post('/api/setup-printer', checkAdmin, (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Printy server running on port ${PORT}`);
+  console.log(`printy server running on port ${PORT}`);
 });
