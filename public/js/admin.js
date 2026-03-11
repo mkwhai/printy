@@ -8,8 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusMessage = document.getElementById('statusMessage');
 
     const usersTableBody = document.getElementById('usersTableBody');
+    const queueTableBody = document.getElementById('queueTableBody');
     const logsTableBody = document.getElementById('logsTableBody');
     const newUserName = document.getElementById('newUserName');
+    const requireModerationCb = document.getElementById('requireModerationCb');
     const generateUserBtn = document.getElementById('generateUserBtn');
 
     const showMessage = (msg, isError = false) => {
@@ -33,11 +35,45 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${u.id}</td>
                     <td>${u.name}</td>
                     <td style="font-weight:bold; letter-spacing:2px; font-family:monospace;">${u.code}</td>
+                    <td>${u.requires_moderation ? 'Wymaga moderacji' : 'Bezpośredni'}</td>
                     <td>${new Date(u.created_at).toLocaleString('pl-PL')}</td>
                     <td><button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem" onclick="deleteUser(${u.id})">Usuń</button></td>
                 `;
                 usersTableBody.appendChild(tr);
             });
+
+            // Fetch queue
+            const queueRes = await fetch('/api/admin/queue', { headers: { 'Authorization': `Bearer ${adminToken}` }});
+            const queue = await queueRes.json();
+            
+            queueTableBody.innerHTML = '';
+            if (queue.length === 0) {
+                queueTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Brak oczekujących wydruków.</td></tr>';
+            } else {
+                queue.forEach(q => {
+                    const tr = document.createElement('tr');
+                    let optsStr = '';
+                    try {
+                        const opts = JSON.parse(q.options || '{}');
+                        optsStr = `Kopie: ${opts.copies}, Układ: ${opts.layout}, Kolor: ${opts.color}`;
+                    } catch(e) {}
+
+                    tr.innerHTML = `
+                        <td>${new Date(q.created_at).toLocaleString('pl-PL')}</td>
+                        <td>${q.user_name} <span class="help-text">(${q.user_code})</span></td>
+                        <td style="word-break: break-all; max-width: 200px;">${q.filename}</td>
+                        <td>${q.printer || '-'}</td>
+                        <td style="font-size: 0.75rem; color: #666;">${optsStr}</td>
+                        <td>
+                            <div style="display:flex; gap:5px;">
+                                <button class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem" onclick="approveJob(${q.id})">Zatwierdź</button>
+                                <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem" onclick="rejectJob(${q.id})">Odrzuć</button>
+                            </div>
+                        </td>
+                    `;
+                    queueTableBody.appendChild(tr);
+                });
+            }
 
             // Fetch logs
             const logsRes = await fetch('/api/admin/logs', { headers: { 'Authorization': `Bearer ${adminToken}` }});
@@ -70,17 +106,48 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchDashData();
     };
 
+    window.approveJob = async (id) => {
+        if(!confirm('Czy na pewno chcesz zatwierdzić i wydrukować ten plik?')) return;
+        const res = await fetch(`/api/admin/queue/${id}/approve`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        if(res.ok) {
+            showMessage('Wydruk zatwierdzony i wysłany do drukarki.');
+            fetchDashData();
+        } else {
+            const data = await res.json();
+            showMessage(data.error || 'Wystąpił błąd', true);
+        }
+    };
+
+    window.rejectJob = async (id) => {
+        if(!confirm('Czy na pewno chcesz odrzucić wydruk (plik zostanie usunięty)?')) return;
+        const res = await fetch(`/api/admin/queue/${id}/reject`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        if(res.ok) {
+            showMessage('Wydruk odrzucony pomyślnie.');
+            fetchDashData();
+        } else {
+            showMessage('Błąd podczas odrzucania.', true);
+        }
+    };
+
     generateUserBtn.addEventListener('click', async () => {
         const name = newUserName.value.trim();
+        const requiresModeration = requireModerationCb.checked;
         if(!name) return showMessage('Podaj najpierw nazwę dla nowego kodu.', true);
 
         const res = await fetch('/api/admin/users', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name, requiresModeration })
         });
         if(res.ok) {
             newUserName.value = '';
+            requireModerationCb.checked = false;
             fetchDashData();
             showMessage('Pomyślnie wygenerowano nowy PIN.');
         } else {

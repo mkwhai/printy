@@ -49,7 +49,10 @@
         <section class="card mb-2">
             <div class="flex-between">
                 <h2>Użytkownicy (Kody Dostępu)</h2>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="requireModerationCb"> Wymaga moderacji
+                    </label>
                     <input type="text" id="newUserName" placeholder="Nazwa osoby..." style="width: 200px;">
                     <button class="btn btn-primary" id="generateUserBtn">+ Generuj PIN</button>
                 </div>
@@ -61,11 +64,33 @@
                             <th>ID</th>
                             <th>Nazwa</th>
                             <th>Kod PIN</th>
+                            <th>Uprawnienia</th>
                             <th>Dodano</th>
                             <th>Akcje</th>
                         </tr>
                     </thead>
                     <tbody id="usersTableBody">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card mb-2" id="queueSection">
+            <h2>Oczekujące Wydruki (Kolejka)</h2>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Użytkownik</th>
+                            <th>Plik</th>
+                            <th>Drukarka</th>
+                            <th>Ustawienia</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody id="queueTableBody">
                         <!-- Filled by JS -->
                     </tbody>
                 </table>

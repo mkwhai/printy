@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const data = await response.json();
                 if (response.ok) {
-                    showMessage('Plik został poprawnie wysłany do druku.');
+                    showMessage(data.message || 'Plik przesłany do systemu.');
                 } else {
                     showMessage(data.error || 'Wystąpił błąd podczas wysyłania', true);
                     if(response.status === 403) pinModal.classList.remove('hidden');
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const data = await response.json();
                 if (response.ok) {
-                    showMessage('Plik z URL został poprawnie wysłany do druku.');
+                    showMessage(data.message || 'Plik przesłany do systemu.');
                     urlInput.value = '';
                 } else {
                     showMessage(data.error || 'Wystąpił błąd podczas drukowania URL', true);
