@@ -133,7 +133,8 @@ header p {
     transition: background 0.3s ease;
 }
 
-/* Gradient border - sits behind the white cover */
+/* Shared gradient settings for border and aura to ensure perfect sync on Safari */
+.hero-dropzone::before,
 .hero-dropzone::after {
     content: "";
     position: absolute;
@@ -145,30 +146,23 @@ header p {
     background-size: 400% 400%;
     border-radius: calc(var(--radius) + 4px);
     animation: dropzone-gradient 8s ease infinite;
-    z-index: 0;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
     will-change: background-position;
+}
+
+/* Gradient border - sits behind the white cover */
+.hero-dropzone::after {
+    z-index: 0;
 }
 
 /* Aura glow - deepest layer */
 .hero-dropzone::before {
-    content: "";
-    position: absolute;
-    top: -4px;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
-    background: linear-gradient(-45deg, var(--dropzone-gradient-colors));
-    background-size: 400% 400%;
-    border-radius: calc(var(--radius) + 4px);
-    animation: dropzone-gradient 8s ease infinite;
     filter: blur(25px);
     opacity: 0.3;
     z-index: -1;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    transform: translateZ(0);
     transition: opacity 0.4s ease, filter 0.4s ease;
-    will-change: background-position;
 }
 
 /* Content sits above the white cover */
