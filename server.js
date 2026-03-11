@@ -37,8 +37,12 @@ const printFile = (filePath, printerAddress, options, callback) => {
   // Options we support: copies, sides, color, pageRanges, scale, fitToPage
   const { 
     copies = 1, 
-    duplex = false, 
-    color = false,
+    layout = 'portrait',
+    color = 'color',
+    duplex = 'one-sided',
+    paperSize = 'A4',
+    pagesPerSheet = '1',
+    margins = 'default',
     pageRanges = '',
     scale = '',
     fitToPage = false
@@ -51,14 +55,28 @@ const printFile = (filePath, printerAddress, options, callback) => {
     command += ` -d "${targetPrinter}"`;
   }
   
-  if (duplex) {
-    command += ` -o sides=two-sided-long-edge`;
-  } else {
-    command += ` -o sides=one-sided`;
+  if (['one-sided', 'two-sided-long-edge', 'two-sided-short-edge'].includes(duplex)) {
+    command += ` -o sides=${duplex}`;
   }
   
-  if (!color) {
+  if (color === 'bw') {
     command += ` -o print-color-mode=monochrome`;
+  }
+
+  if (layout === 'landscape') {
+    command += ` -o orientation-requested=4`;
+  }
+
+  if (paperSize && paperSize.trim() !== '') {
+    command += ` -o media=${paperSize}`;
+  }
+
+  if (pagesPerSheet && !isNaN(parseInt(pagesPerSheet)) && parseInt(pagesPerSheet) > 1) {
+    command += ` -o number-up=${parseInt(pagesPerSheet)}`;
+  }
+
+  if (margins === 'none') {
+    command += ` -o page-bottom=0 -o page-top=0 -o page-left=0 -o page-right=0`;
   }
 
   if (pageRanges && pageRanges.trim() !== '') {
@@ -100,8 +118,12 @@ app.post('/api/print', upload.single('file'), (req, res) => {
   const printerAddress = req.body.printer;
   const options = {
     copies: parseInt(req.body.copies) || 1,
-    duplex: req.body.duplex === 'true',
-    color: req.body.color === 'true',
+    duplex: req.body.duplex || 'one-sided',
+    color: req.body.color || 'color',
+    layout: req.body.layout || 'portrait',
+    paperSize: req.body.paperSize || 'A4',
+    pagesPerSheet: req.body.pagesPerSheet || '1',
+    margins: req.body.margins || 'default',
     pageRanges: req.body.pageRanges || '',
     scale: req.body.scale || '',
     fitToPage: req.body.fitToPage === 'true'
@@ -151,8 +173,12 @@ app.post('/api/print-url', async (req, res) => {
     writer.on('finish', () => {
       const options = {
         copies: parseInt(copies) || 1,
-        duplex: duplex === true || duplex === 'true',
-        color: color === true || color === 'true',
+        duplex: req.body.duplex || 'one-sided',
+        color: req.body.color || 'color',
+        layout: req.body.layout || 'portrait',
+        paperSize: req.body.paperSize || 'A4',
+        pagesPerSheet: req.body.pagesPerSheet || '1',
+        margins: req.body.margins || 'default',
         pageRanges: req.body.pageRanges || '',
         scale: req.body.scale || '',
         fitToPage: req.body.fitToPage === true || req.body.fitToPage === 'true'

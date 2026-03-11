@@ -70,39 +70,94 @@
                 <p id="modalFileName" class="modal-file-name"></p>
                 
                 <div class="form-group">
-                    <label for="printerName">Odbiorca (Kolejka drukarki)</label>
-                    <input type="text" id="printerName" placeholder="Pozostaw puste dla domyślnej w systemie">
+                    <label for="printerName">Odbiorca</label>
+                    <input type="text" id="printerName" placeholder="Zapisz do domyślnej w systemie">
                 </div>
 
                 <div class="form-group grid-2">
                     <div>
-                        <label for="copies">Liczba kopii</label>
-                        <input type="number" id="copies" value="1" min="1" max="100">
+                        <label for="pageRanges">Strony</label>
+                        <input type="text" id="pageRanges" placeholder="np. Wszystkie lub 1-5, 8">
                     </div>
                     <div>
-                        <label for="scale">Skala (%)</label>
-                        <input type="number" id="scale" placeholder="np. 100" min="1" max="200">
+                        <label for="copies">Kopie</label>
+                        <input type="number" id="copies" value="1" min="1" max="100">
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="pageRanges">Zakres stron</label>
-                    <input type="text" id="pageRanges" placeholder="np. 1, 3-5, 8">
+                <div class="form-group grid-2">
+                    <div>
+                        <label for="layout">Układ</label>
+                        <select id="layout">
+                            <option value="portrait">Pionowa</option>
+                            <option value="landscape">Pozioma</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="colorMode">Kolor</label>
+                        <select id="colorMode">
+                            <option value="color">Kolor</option>
+                            <option value="bw">Czarno-biały</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="form-group checkbox-grid pt-1">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="duplex">
-                        Druk dwustronny
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="color" checked>
-                        Druk w kolorze
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="fitToPage">
-                        Dopasuj do strony
-                    </label>
+                <div class="accordion pt-1">
+                    <button class="accordion-btn" id="toggleMoreSettings" type="button">Więcej ustawień</button>
+                    <div class="accordion-content" id="moreSettingsBlock">
+                        <div class="form-group grid-2">
+                            <div>
+                                <label for="paperSize">Rozmiar papieru</label>
+                                <select id="paperSize">
+                                    <option value="A4">A4</option>
+                                    <option value="A5">A5</option>
+                                    <option value="Letter">Letter</option>
+                                    <option value="Legal">Legal</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="pagesPerSheet">Stron na arkusz</label>
+                                <select id="pagesPerSheet">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="4">4</option>
+                                    <option value="6">6</option>
+                                    <option value="9">9</option>
+                                    <option value="16">16</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group grid-2">
+                            <div>
+                                <label for="margins">Marginesy</label>
+                                <select id="margins">
+                                    <option value="default">Domyślne</option>
+                                    <option value="none">Brak marginesów</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="scale">Skala</label>
+                                <input type="number" id="scale" placeholder="Domyślna (100)" min="1" max="200">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="duplexMode">Wydruk dwustronny</label>
+                            <select id="duplexMode">
+                                <option value="one-sided">Jednostronnie</option>
+                                <option value="two-sided-long-edge">Drukuj po obu stronach (odwróć wzdłuż długiej krawędzi)</option>
+                                <option value="two-sided-short-edge">Drukuj po obu stronach (odwróć wzdłuż krótkiej krawędzi)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group checkbox-grid pt-1">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="fitToPage">
+                                Dopasuj do strony
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-actions">

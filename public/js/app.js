@@ -51,11 +51,24 @@ document.addEventListener('DOMContentLoaded', () => {
             copies: document.getElementById('copies').value,
             scale: document.getElementById('scale').value,
             pageRanges: document.getElementById('pageRanges').value,
-            duplex: document.getElementById('duplex').checked,
-            color: document.getElementById('color').checked,
+            duplex: document.getElementById('duplexMode').value,
+            color: document.getElementById('colorMode').value,
+            layout: document.getElementById('layout').value,
+            paperSize: document.getElementById('paperSize').value,
+            pagesPerSheet: document.getElementById('pagesPerSheet').value,
+            margins: document.getElementById('margins').value,
             fitToPage: document.getElementById('fitToPage').checked
         };
     };
+
+    // More Settings Accordion
+    const toggleMoreSettings = document.getElementById('toggleMoreSettings');
+    const moreSettingsBlock = document.getElementById('moreSettingsBlock');
+    if (toggleMoreSettings) {
+        toggleMoreSettings.addEventListener('click', () => {
+            moreSettingsBlock.classList.toggle('active');
+        });
+    }
 
     // Modal Actions
     closeModalBtn.addEventListener('click', closeModal);
