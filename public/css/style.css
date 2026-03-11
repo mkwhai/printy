@@ -78,92 +78,80 @@ header p {
 }
 
 .hero-dropzone {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    min-height: 300px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    min-height: 300px !important;
+    border-radius: var(--radius) !important;
+    cursor: pointer !important;
+    transition: all 0.4s ease !important;
     background-color: #ffffff !important;
     background-image: none !important;
-    position: relative;
-    border: none;
-    z-index: 10;
-    box-shadow: inset 0 0 0 3000px #ffffff; /* Absolute solid white filling */
+    position: relative !important;
+    border: none !important;
+    z-index: 10 !important;
 }
 
-/* massive aura glow (behind) */
 .hero-dropzone::before {
-    content: "";
-    position: absolute;
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
-    background: var(--accent-gradient);
-    background-size: 400% 400%;
-    z-index: -2;
-    border-radius: calc(var(--radius) + 10px);
-    animation: animate-gradient 8s ease infinite;
-    opacity: 0.4;
-    filter: blur(25px);
-    transition: all 0.5s ease;
+    content: "" !important;
+    position: absolute !important;
+    top: -12px !important;
+    left: -12px !important;
+    right: -12px !important;
+    bottom: -12px !important;
+    background: var(--accent-gradient) !important;
+    background-size: 400% 400% !important;
+    z-index: -2 !important;
+    border-radius: calc(var(--radius) + 12px) !important;
+    animation: animate-gradient 8s ease infinite !important;
+    opacity: 0.5 !important;
+    filter: blur(25px) !important;
+    transition: all 0.5s ease-in-out !important;
 }
 
-/* sharp gradient border (edge) */
 .hero-dropzone::after {
-    content: "";
-    position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    background: var(--accent-gradient);
-    background-size: 400% 400%;
-    z-index: -1;
-    border-radius: calc(var(--radius) + 4px);
-    animation: animate-gradient 8s ease infinite;
-    opacity: 1;
+    content: "" !important;
+    position: absolute !important;
+    top: -3px !important;
+    left: -3px !important;
+    right: -3px !important;
+    bottom: -3px !important;
+    background: var(--accent-gradient) !important;
+    background-size: 400% 400% !important;
+    z-index: -1 !important;
+    border-radius: calc(var(--radius) + 4px) !important;
+    animation: animate-gradient 8s ease infinite !important;
+    opacity: 1 !important;
 }
 
 .hero-dropzone h2, .hero-dropzone p, .hero-dropzone .icon {
-    color: #18181b !important; /* Force dark text on white background */
-    text-shadow: none;
+    color: #18181b !important;
+    text-shadow: none !important;
 }
 
 .hero-dropzone:hover {
-    transform: translateY(-5px);
+    transform: translateY(-5px) !important;
 }
 
 .hero-dropzone:hover::before {
-    opacity: 1;
-    filter: blur(35px);
-    transform: scale(1.08);
-}
-
-.hero-dropzone:hover::after {
-    opacity: 1;
-    transform: scale(1.01);
+    opacity: 0.8 !important;
+    filter: blur(35px) !important;
 }
 
 .hero-dropzone.dragover {
-    transform: scale(1.03);
+    transform: scale(1.02) !important;
 }
 
 .hero-dropzone.dragover::before {
-    opacity: 1;
-    animation: animate-gradient 2s ease infinite;
-    filter: blur(45px);
-    transform: scale(1.15);
+    opacity: 1 !important;
+    animation: animate-gradient 2s ease infinite !important;
+    filter: blur(45px) !important;
 }
 
 .hero-dropzone.dragover::after {
-    opacity: 1;
-    animation: animate-gradient 2s ease infinite;
-    transform: scale(1.05);
+    animation: animate-gradient 2s ease infinite !important;
 }
 
 @keyframes animate-gradient {
