@@ -374,3 +374,37 @@ input[type="url"]:focus {
   30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
   40%, 60% { transform: translate3d(4px, 0, 0); }
 }
+
+/* Footer Box */
+.footer-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.5rem;
+    margin-top: 1.5rem;
+    box-shadow: var(--shadow);
+    font-size: 0.875rem;
+}
+
+.footer-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.footer-link:hover {
+    color: var(--primary);
+}
+
+.footer-version {
+    color: var(--text-main);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
