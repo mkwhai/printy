@@ -21,24 +21,94 @@ document.addEventListener('DOMContentLoaded', () => {
     // State
     let currentJob = null; // { type: 'file', payload: File } | { type: 'url', payload: String }
 
+    let verifiedUserCode = null;
+
     // Auth and Settings
-    const inlinePinInput = document.getElementById('inlinePinInput');
+    const pinWrapper = document.getElementById('pinWrapper');
+    const pinContainer = document.getElementById('pinContainer');
+    const pinBoxes = document.querySelectorAll('.pin-box');
+    const pinError = document.getElementById('pinError');
 
-    // 1. Sprawdź, czy użytkownik ma zapisany PIN i wypełnij pole
-    const savedPin = localStorage.getItem('printyUserCode');
-    if (savedPin) {
-        inlinePinInput.value = savedPin;
-    }
-
-    // Zapisz wpisany PIN po odkliknięciu (zmianie)
-    inlinePinInput.addEventListener('change', () => {
-        const pin = inlinePinInput.value.trim();
-        if (pin.length > 0) {
-            localStorage.setItem('printyUserCode', pin);
-        } else {
-            localStorage.removeItem('printyUserCode');
+    const verifyPinAction = async (pin, showVisualError = true) => {
+        try {
+            const res = await fetch('/api/verify-pin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userCode: pin })
+            });
+            if (res.ok) {
+                verifiedUserCode = pin;
+                localStorage.setItem('printyUserCode', pin);
+                pinWrapper.classList.add('hidden');
+                dropzone.classList.remove('hidden');
+                if (pinError) pinError.classList.add('hidden');
+            } else {
+                handlePinError(showVisualError);
+            }
+        } catch (e) {
+            handlePinError(showVisualError);
         }
+    };
+
+    const handlePinError = (showVisualError) => {
+        localStorage.removeItem('printyUserCode');
+        verifiedUserCode = null;
+        if (showVisualError) {
+            if (pinError) {
+                pinError.textContent = 'Nieprawidłowy PIN, spróbuj ponownie.';
+                pinError.classList.remove('hidden');
+            }
+            pinContainer.classList.add('shake');
+            setTimeout(() => pinContainer.classList.remove('shake'), 400);
+            pinBoxes.forEach(b => b.value = '');
+            pinBoxes[0].focus();
+        }
+    };
+
+    pinBoxes.forEach((box, index) => {
+        box.addEventListener('input', (e) => {
+            box.value = box.value.replace(/[^0-9]/g, '');
+            if (box.value.length === 1) {
+                if (index < pinBoxes.length - 1) {
+                    pinBoxes[index + 1].focus();
+                } else {
+                    const fullPin = Array.from(pinBoxes).map(b => b.value).join('');
+                    if (fullPin.length === 6) verifyPinAction(fullPin, true);
+                }
+            }
+        });
+
+        box.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && box.value === '') {
+                if (index > 0) pinBoxes[index - 1].focus();
+            }
+        });
+        
+        box.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+            if (pastedData) {
+                let currIdx = index;
+                for (let i = 0; i < pastedData.length; i++) {
+                    if (currIdx < pinBoxes.length) {
+                        pinBoxes[currIdx].value = pastedData[i];
+                        if (currIdx < pinBoxes.length - 1) pinBoxes[currIdx + 1].focus();
+                        currIdx++;
+                    }
+                }
+                const fullPin = Array.from(pinBoxes).map(b => b.value).join('');
+                if (fullPin.length === 6) verifyPinAction(fullPin, true);
+            }
+        });
     });
+
+    const checkStoredPin = async () => {
+        const savedPin = localStorage.getItem('printyUserCode');
+        if (savedPin && savedPin.length === 6) {
+            await verifyPinAction(savedPin, false);
+        }
+    };
+    checkStoredPin();
 
     // 2. Odczyt zapisanych ustawień druku
     const settingsKeys = ['printerName', 'copies', 'pageRanges', 'scale', 'duplexMode', 'colorMode', 'layout', 'paperSize', 'pagesPerSheet', 'margins'];
@@ -124,10 +194,11 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmPrintBtn.textContent = 'Trwa wysyłanie...';
 
         try {
-            const userCode = inlinePinInput.value.trim();
-            if(!userCode) {
+            if(!verifiedUserCode) {
                 closeModal();
-                return showMessage('Wpisz najpierw swój Kod Dostępu (PIN) w polu nad plikiem.', true);
+                pinWrapper.classList.remove('hidden');
+                dropzone.classList.add('hidden');
+                return showMessage('Twój PIN stracił ważność. Zaloguj się ponownie.', true);
             }
 
             if (currentJob.type === 'file') {
@@ -139,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const response = await fetch('/api/print', {
                     method: 'POST',
-                    headers: { 'x-user-code': userCode },
+                    headers: { 'x-user-code': verifiedUserCode },
                     body: formData
                 });
                 
@@ -156,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'x-user-code': userCode
+                        'x-user-code': verifiedUserCode
                     },
                     body: JSON.stringify(options)
                 });

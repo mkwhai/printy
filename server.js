@@ -178,6 +178,25 @@ const checkUserCode = async (req, res, next) => {
     next();
 };
 
+const sendWebhookNotification = async (userName, fileName) => {
+    const webhookUrl = process.env.WEBHOOK_URL;
+    if (!webhookUrl) return;
+    try {
+        await axios.post(webhookUrl, {
+            content: `🖨️ **Nowy dokument do druku oczekuje na moderację!**\n👤 Użytkownik: \`${userName}\`\n📄 Plik: \`${fileName}\``
+        });
+    } catch (err) {
+        console.error('Błąd powiadomienia Webhook:', err.message);
+    }
+};
+
+app.post('/api/verify-pin', async (req, res) => {
+    const userCode = req.body.userCode;
+    if (!userCode) return res.status(400).json({ error: 'Brak PINu' });
+    const user = await db.get('SELECT * FROM users WHERE code = ?', [userCode]);
+    if (!user) return res.status(403).json({ error: 'Nieprawidłowy PIN' });
+    res.json({ success: true, name: user.name });
+});
 
 // API: Admin endpoints
 app.get('/api/admin/users', checkAdmin, async (req, res) => {
@@ -279,7 +298,8 @@ app.post('/api/print', upload.single('file'), checkUserCode, (req, res) => {
     db.run(`INSERT INTO print_queue (user_id, filename, file_path, original_url, printer, options) VALUES (?, ?, ?, ?, ?, ?)`,
       [req.user.id, originalName, filePath, '', printerAddress, JSON.stringify(options)]
     ).then(() => {
-        res.json({ success: true, queued: true, message: 'Plik przesłany do kolejki! Oczekuje na zatwierdzenie przez administratora.' });
+        sendWebhookNotification(req.user.name, originalName);
+        res.json({ success: true, queued: true, message: 'Plik przesłany do kolejki! Oczekuje na zatwierdzenie.' });
     }).catch(err => {
         res.status(500).json({ error: 'Błąd bazy danych.', details: err.message });
     });
@@ -345,7 +365,8 @@ app.post('/api/print-url', checkUserCode, async (req, res) => {
         db.run(`INSERT INTO print_queue (user_id, filename, file_path, original_url, printer, options) VALUES (?, ?, ?, ?, ?, ?)`,
           [req.user.id, url, filePath, url, printer, JSON.stringify(options)]
         ).then(() => {
-            res.json({ success: true, queued: true, message: 'Plik z URL przesłany do kolejki! Oczekuje na zatwierdzenie przez administratora.' });
+            sendWebhookNotification(req.user.name, url);
+            res.json({ success: true, queued: true, message: 'Plik z URL przesłany do kolejki! Oczekuje na zatwierdzenie.' });
         }).catch(err => res.status(500).json({ error: 'Błąd bazy danych.', details: err.message }));
       } else {
         printFile(filePath, printer, options, async (err, output, usedPrinter) => {
