@@ -42,6 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 pinWrapper.classList.add('hidden');
                 dropzone.classList.remove('hidden');
                 if (pinError) pinError.classList.add('hidden');
+                
+                // Automatycznie kontynuuj proces drukowania po pomyślnym zalogowaniu
+                if (currentJob) {
+                    await submitPrintJob();
+                }
             } else {
                 handlePinError(showVisualError);
             }
@@ -102,13 +107,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const checkStoredPin = async () => {
+    const initApp = async () => {
         const savedPin = localStorage.getItem('printyUserCode');
         if (savedPin && savedPin.length === 6) {
-            await verifyPinAction(savedPin, false);
+            // Ciche sprawdzenie w tle
+            try {
+                const res = await fetch('/api/verify-pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userCode: savedPin })
+                });
+                if (res.ok) {
+                    verifiedUserCode = savedPin;
+                    dropzone.classList.remove('hidden');
+                } else {
+                    localStorage.removeItem('printyUserCode');
+                    dropzone.classList.remove('hidden');
+                }
+            } catch (e) {
+                dropzone.classList.remove('hidden');
+            }
+        } else {
+            // Jeśli nie ma zapisanego widoczny jest od początku dropzone
+            dropzone.classList.remove('hidden');
         }
     };
-    checkStoredPin();
+    initApp();
 
     // 2. Odczyt zapisanych ustawień druku
     const settingsKeys = ['printerName', 'copies', 'pageRanges', 'scale', 'duplexMode', 'colorMode', 'layout', 'paperSize', 'pagesPerSheet', 'margins'];
@@ -184,21 +208,35 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModalBtn.addEventListener('click', closeModal);
     cancelPrintBtn.addEventListener('click', closeModal);
 
-    confirmPrintBtn.addEventListener('click', async () => {
+    confirmPrintBtn.addEventListener('click', () => {
         if (!currentJob) return;
 
+        // Jeśli maszyna ma już potwierdzony w tej sesji PIN - drukuj prosto.
+        if (verifiedUserCode) {
+            submitPrintJob();
+        } else {
+            // Ukryj dropzone/modal i pokaż podawanie PINu
+            closeModal();
+            dropzone.classList.add('hidden');
+            pinWrapper.classList.remove('hidden');
+            pinBoxes[0].focus();
+            showMessage('Wpisz Kod Dostępu, aby autoryzować ten wydruk.');
+        }
+    });
+
+    // Prawdziwe strzelanie do API z dokumentem (wydzielone z przycisku confirm)
+    const submitPrintJob = async () => {
         const options = getPrintOptions();
         
-        // Setup UI for loading
-        confirmPrintBtn.disabled = true;
-        confirmPrintBtn.textContent = 'Trwa wysyłanie...';
+        statusMessage.textContent = 'Trwa wysyłanie...';
+        statusMessage.className = 'status-message';
+        statusMessage.classList.remove('hidden');
 
         try {
             if(!verifiedUserCode) {
-                closeModal();
                 pinWrapper.classList.remove('hidden');
                 dropzone.classList.add('hidden');
-                return showMessage('Twój PIN stracił ważność. Zaloguj się ponownie.', true);
+                return showMessage('Twój PIN tracił ważność. Zaloguj się ponownie.', true);
             }
 
             if (currentJob.type === 'file') {
@@ -244,11 +282,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showMessage('Błąd połączenia z serwerem.', true);
         } finally {
-            confirmPrintBtn.disabled = false;
-            confirmPrintBtn.textContent = 'Drukuj';
-            closeModal();
+            currentJob = null;
+            fileInput.value = '';
+            pinWrapper.classList.add('hidden');
+            dropzone.classList.remove('hidden');
         }
-    });
+    };
 
     // Dropzone & File Input Actions
     // Przeciwdziałaj bombelkowaniu, żeby np. kliknięcie inputa/buttona URL nie wyzwalało kliku na dropzone

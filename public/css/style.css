@@ -238,9 +238,12 @@ input[type="url"]:focus {
     background-color: var(--card-bg);
     width: 100%;
     max-width: 500px;
+    max-height: 90vh; /* Zapobiega wyjściu poza wysokość ekranu */
     border-radius: var(--radius);
     box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-header {
@@ -268,6 +271,7 @@ input[type="url"]:focus {
 
 .modal-content {
     padding: 1.5rem;
+    overflow-y: auto; /* Umożliwia scrollowanie samej zawartości */
 }
 
 .modal-file-name {

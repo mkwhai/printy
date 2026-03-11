@@ -14,23 +14,8 @@
             <p>Zarządzaj swoimi wydrukami z łatwością</p>
         </header>
 
-        <main>
-            <!-- Kod Dostępu -->
-            <div id="pinWrapper" class="card" style="margin-bottom: 2rem; text-align: center;">
-                <h2>Podaj Kod Dostępu (PIN)</h2>
-                <p class="help-text mb-2">Poproś administratora serwera o 6-cyfrowy kod, by móc drukować.</p>
-                <div class="pin-container" id="pinContainer">
-                    <input type="text" maxlength="1" class="pin-box" data-index="0">
-                    <input type="text" maxlength="1" class="pin-box" data-index="1">
-                    <input type="text" maxlength="1" class="pin-box" data-index="2">
-                    <input type="text" maxlength="1" class="pin-box" data-index="3">
-                    <input type="text" maxlength="1" class="pin-box" data-index="4">
-                    <input type="text" maxlength="1" class="pin-box" data-index="5">
-                </div>
-            </div>
-
             <!-- Zintegrowane Miejsce Akcji (Dropzone + URL) -->
-            <section class="card upload-card hero-dropzone hidden" id="dropzone">
+            <section class="card upload-card hero-dropzone" id="dropzone">
                 <div class="upload-content">
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
                     <h2>Przeciągnij i upuść plik</h2>
@@ -48,6 +33,20 @@
                 </div>
             </section>
             
+            <!-- Kod Dostępu (Wyświetlany po zatwierdzeniu modala modalu) -->
+            <div id="pinWrapper" class="card hidden" style="margin-bottom: 2rem; text-align: center;">
+                <h2>Autoryzacja Wydruku</h2>
+                <p class="help-text mb-2">Wpisz 6-cyfrowy kod, by zatwierdzić zlecenie z Printy.</p>
+                <div class="pin-container" id="pinContainer">
+                    <input type="text" maxlength="1" class="pin-box" data-index="0">
+                    <input type="text" maxlength="1" class="pin-box" data-index="1">
+                    <input type="text" maxlength="1" class="pin-box" data-index="2">
+                    <input type="text" maxlength="1" class="pin-box" data-index="3">
+                    <input type="text" maxlength="1" class="pin-box" data-index="4">
+                    <input type="text" maxlength="1" class="pin-box" data-index="5">
+                </div>
+            </div>
+
             <div id="statusMessage" class="status-message hidden"></div>
 
             <!-- Footer Meta Info -->
