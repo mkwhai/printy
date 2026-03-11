@@ -111,7 +111,7 @@ header p {
     border-radius: var(--radius);
     cursor: pointer;
     position: relative;
-    margin-bottom: 4rem;
+    margin-bottom: 3rem;
     overflow: visible;
     border: none;
     background: transparent;
