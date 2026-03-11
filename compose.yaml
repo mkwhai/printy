@@ -3,7 +3,7 @@ services:
     build: .
     container_name: printy-app
     ports:
-      - "3000:3000"
+      - "3030:3030"
     restart: unless-stopped
     # Jeśli wymagane jest specyficzne logowanie:
     # logging:

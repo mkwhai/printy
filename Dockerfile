@@ -25,8 +25,8 @@ COPY . .
 # Ensure start.sh is executable
 RUN chmod +x start.sh
 
-# Expose port (Printy uses 3000 by default)
-EXPOSE 3000
+# Expose port (Printy uses 3030 by default)
+EXPOSE 3030
 
 # Start command
 CMD ["./start.sh"]
