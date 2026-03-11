@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlInput = document.getElementById('urlInput');
     const urlNextBtn = document.getElementById('urlNextBtn');
     const statusMessage = document.getElementById('statusMessage');
+    const fileQueueSection = document.getElementById('fileQueueSection');
+    const fileQueueList = document.getElementById('fileQueueList');
+    const printAllBtn = document.getElementById('printAllBtn');
     
     // Modal Elements
     const printModal = document.getElementById('printModal');
@@ -19,11 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const setupPrinterBtn = document.getElementById('setupPrinterBtn');
 
     // State
-    let currentJob = null; // { type: 'file', payload: File } | { type: 'url', payload: String }
-
+    let jobQueue = []; // Array of { id, type: 'file'|'url', payload, name, options }
+    let editingJobId = null; // ID of job currently being edited in modal
     let verifiedUserCode = null;
+    let nextJobId = 0;
 
-    // Auth and Settings
+    // Auth
     const pinWrapper = document.getElementById('pinWrapper');
     const pinContainer = document.getElementById('pinContainer');
     const pinBoxes = document.querySelectorAll('.pin-box');
@@ -41,11 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('printyUserCode', pin);
                 pinWrapper.classList.add('hidden');
                 dropzone.classList.remove('hidden');
+                fileQueueSection.classList.toggle('hidden', jobQueue.length === 0);
                 if (pinError) pinError.classList.add('hidden');
                 
-                // Automatycznie kontynuuj proces drukowania po pomyślnym zalogowaniu
-                if (currentJob) {
-                    await submitPrintJob();
+                // Automatycznie kontynuuj drukowanie po zalogowaniu
+                if (jobQueue.length > 0) {
+                    await submitAllJobs();
                 }
             } else {
                 handlePinError(showVisualError);
@@ -110,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const initApp = async () => {
         const savedPin = localStorage.getItem('printyUserCode');
         if (savedPin && savedPin.length === 6) {
-            // Ciche sprawdzenie w tle
             try {
                 const res = await fetch('/api/verify-pin', {
                     method: 'POST',
@@ -119,32 +123,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (res.ok) {
                     verifiedUserCode = savedPin;
-                    dropzone.classList.remove('hidden');
                 } else {
                     localStorage.removeItem('printyUserCode');
-                    dropzone.classList.remove('hidden');
                 }
-            } catch (e) {
-                dropzone.classList.remove('hidden');
-            }
-        } else {
-            // Jeśli nie ma zapisanego widoczny jest od początku dropzone
-            dropzone.classList.remove('hidden');
+            } catch (e) { /* ignore */ }
         }
+        dropzone.classList.remove('hidden');
     };
     initApp();
 
-    // 2. Odczyt zapisanych ustawień druku
+    // Odczyt zapisanych ustawień druku (domyślne dla nowych plików)
     const settingsKeys = ['printerName', 'copies', 'pageRanges', 'scale', 'duplexMode', 'colorMode', 'layout', 'paperSize', 'pagesPerSheet', 'margins'];
-    settingsKeys.forEach(key => {
-        const val = localStorage.getItem(`printy_${key}`);
-        if(val) document.getElementById(key).value = val;
-    });
-    if(localStorage.getItem('printy_fitToPage') === 'true') {
-        document.getElementById('fitToPage').checked = true;
-    }
+    
+    const getDefaultOptions = () => {
+        const opts = {};
+        settingsKeys.forEach(key => {
+            const val = localStorage.getItem(`printy_${key}`);
+            if (val) opts[key] = val;
+        });
+        opts.fitToPage = localStorage.getItem('printy_fitToPage') === 'true';
+        return opts;
+    };
 
-    // 3. Automatyczny powrót (zapis) po edycji dowolnego wejścia modalnego
+    const loadSavedSettings = () => {
+        settingsKeys.forEach(key => {
+            const val = localStorage.getItem(`printy_${key}`);
+            if(val) {
+                const el = document.getElementById(key);
+                if (el) el.value = val;
+            }
+        });
+        const fitEl = document.getElementById('fitToPage');
+        if(fitEl && localStorage.getItem('printy_fitToPage') === 'true') {
+            fitEl.checked = true;
+        }
+    };
+    loadSavedSettings();
+
+    // Automatyczny zapis po edycji
     document.querySelectorAll('#printModal input, #printModal select').forEach(el => {
         el.addEventListener('change', (e) => {
             if(e.target.type === 'checkbox') {
@@ -163,20 +179,88 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => statusMessage.classList.add('hidden'), 5000);
     };
 
-    const openModal = (job) => {
-        currentJob = job;
-        if (job.type === 'file') {
-            modalFileName.textContent = `Wybrany plik: ${job.payload.name}`;
-        } else {
-            modalFileName.textContent = `Adres URL: ${job.payload}`;
+    // --- JOB QUEUE MANAGEMENT ---
+    const addJobToQueue = (type, payload, name) => {
+        const job = {
+            id: nextJobId++,
+            type,
+            payload,
+            name: name || (type === 'file' ? payload.name : payload),
+            options: null // null = use defaults from modal at print time
+        };
+        jobQueue.push(job);
+        renderQueue();
+    };
+
+    const removeJobFromQueue = (id) => {
+        jobQueue = jobQueue.filter(j => j.id !== id);
+        renderQueue();
+    };
+
+    const renderQueue = () => {
+        fileQueueList.innerHTML = '';
+        if (jobQueue.length === 0) {
+            fileQueueSection.classList.add('hidden');
+            return;
         }
+        fileQueueSection.classList.remove('hidden');
+
+        jobQueue.forEach((job) => {
+            const row = document.createElement('div');
+            row.className = 'file-queue-item';
+
+            const hasCustom = job.options !== null;
+            const statusLabel = hasCustom ? '✅ Własne ustawienia' : '⚙️ Domyślne';
+
+            row.innerHTML = `
+                <span class="fq-name">${escapeHtml(job.name)}</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);margin-right:0.5rem;">${statusLabel}</span>
+                <div class="fq-actions">
+                    <button onclick="window._editJob(${job.id})">Ustawienia</button>
+                    <button class="fq-remove" onclick="window._removeJob(${job.id})">✕</button>
+                </div>
+            `;
+            fileQueueList.appendChild(row);
+        });
+    };
+
+    const escapeHtml = (str) => {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    };
+
+    // Globalne handlery (bo innerHTML onclick)
+    window._removeJob = (id) => removeJobFromQueue(id);
+    window._editJob = (id) => {
+        const job = jobQueue.find(j => j.id === id);
+        if (!job) return;
+        editingJobId = id;
+
+        // Załaduj ustawienia tego pliku do modala (lub domyślne)
+        if (job.options) {
+            setModalFromOptions(job.options);
+        } else {
+            loadSavedSettings(); // Domyślne
+        }
+
+        modalFileName.textContent = `Ustawienia dla: ${job.name}`;
+        confirmPrintBtn.textContent = 'Zapisz ustawienia';
         printModal.classList.remove('hidden');
     };
 
-    const closeModal = () => {
-        printModal.classList.add('hidden');
-        currentJob = null;
-        fileInput.value = '';
+    const setModalFromOptions = (opts) => {
+        if (opts.printer !== undefined) document.getElementById('printerName').value = opts.printer || '';
+        if (opts.copies !== undefined) document.getElementById('copies').value = opts.copies || 1;
+        if (opts.pageRanges !== undefined) document.getElementById('pageRanges').value = opts.pageRanges || '';
+        if (opts.scale !== undefined) document.getElementById('scale').value = opts.scale || '';
+        if (opts.duplex !== undefined) document.getElementById('duplexMode').value = opts.duplex || 'one-sided';
+        if (opts.color !== undefined) document.getElementById('colorMode').value = opts.color || 'color';
+        if (opts.layout !== undefined) document.getElementById('layout').value = opts.layout || 'portrait';
+        if (opts.paperSize !== undefined) document.getElementById('paperSize').value = opts.paperSize || 'A4';
+        if (opts.pagesPerSheet !== undefined) document.getElementById('pagesPerSheet').value = opts.pagesPerSheet || '1';
+        if (opts.margins !== undefined) document.getElementById('margins').value = opts.margins || 'default';
+        document.getElementById('fitToPage').checked = !!opts.fitToPage;
     };
 
     const getPrintOptions = () => {
@@ -205,100 +289,142 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Modal Actions
+    const closeModal = () => {
+        printModal.classList.add('hidden');
+        editingJobId = null;
+        confirmPrintBtn.textContent = 'Drukuj';
+    };
+
     closeModalBtn.addEventListener('click', closeModal);
     cancelPrintBtn.addEventListener('click', closeModal);
 
     confirmPrintBtn.addEventListener('click', () => {
-        if (!currentJob) return;
+        const opts = getPrintOptions();
 
-        // Jeśli maszyna ma już potwierdzony w tej sesji PIN - drukuj prosto.
-        if (verifiedUserCode) {
-            submitPrintJob();
-        } else {
-            // Ukryj dropzone/modal i pokaż podawanie PINu
+        if (editingJobId !== null) {
+            // Zapisujemy ustawienia dla konkretnego pliku
+            const job = jobQueue.find(j => j.id === editingJobId);
+            if (job) {
+                job.options = opts;
+            }
             closeModal();
-            dropzone.classList.add('hidden');
-            pinWrapper.classList.remove('hidden');
-            pinBoxes[0].focus();
-            showMessage('Wpisz Kod Dostępu, aby autoryzować ten wydruk.');
+            renderQueue();
+            showMessage('Ustawienia zapisane dla tego pliku.');
+            return;
         }
     });
 
-    // Prawdziwe strzelanie do API z dokumentem (wydzielone z przycisku confirm)
-    const submitPrintJob = async () => {
-        const options = getPrintOptions();
-        
-        statusMessage.textContent = 'Trwa wysyłanie...';
-        statusMessage.className = 'status-message';
-        statusMessage.classList.remove('hidden');
+    // --- PRINT ALL ---
+    printAllBtn.addEventListener('click', () => {
+        if (jobQueue.length === 0) return;
 
-        try {
-            if(!verifiedUserCode) {
-                pinWrapper.classList.remove('hidden');
-                dropzone.classList.add('hidden');
-                return showMessage('Twój PIN tracił ważność. Zaloguj się ponownie.', true);
+        if (verifiedUserCode) {
+            submitAllJobs();
+        } else {
+            dropzone.classList.add('hidden');
+            fileQueueSection.classList.add('hidden');
+            pinWrapper.classList.remove('hidden');
+            pinBoxes[0].focus();
+            showMessage('Wpisz Kod Dostępu, aby autoryzować wydruk.');
+        }
+    });
+
+    const submitAllJobs = async () => {
+        if (!verifiedUserCode) {
+            pinWrapper.classList.remove('hidden');
+            dropzone.classList.add('hidden');
+            fileQueueSection.classList.add('hidden');
+            return showMessage('Twój PIN stracił ważność. Zaloguj się ponownie.', true);
+        }
+
+        showMessage(`Wysyłanie ${jobQueue.length} plików...`);
+        const defaultOpts = getPrintOptions();
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const job of [...jobQueue]) {
+            const opts = job.options || defaultOpts;
+
+            try {
+                if (job.type === 'file') {
+                    const formData = new FormData();
+                    formData.append('file', job.payload);
+                    for (const [key, value] of Object.entries(opts)) {
+                        formData.append(key, value);
+                    }
+
+                    const response = await fetch('/api/print', {
+                        method: 'POST',
+                        headers: { 'x-user-code': verifiedUserCode },
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                        if(response.status === 403) {
+                            showMessage('Twój PIN jest nieprawidłowy.', true);
+                            return;
+                        }
+                    }
+                } else if (job.type === 'url') {
+                    const body = { ...opts, url: job.payload };
+                    const response = await fetch('/api/print-url', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'x-user-code': verifiedUserCode
+                        },
+                        body: JSON.stringify(body)
+                    });
+                    
+                    if (response.ok) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                        if(response.status === 403) {
+                            showMessage('Twój PIN jest nieprawidłowy.', true);
+                            return;
+                        }
+                    }
+                }
+            } catch (error) {
+                errorCount++;
             }
+        }
 
-            if (currentJob.type === 'file') {
-                const formData = new FormData();
-                formData.append('file', currentJob.payload);
-                for (const [key, value] of Object.entries(options)) {
-                    formData.append(key, value);
-                }
+        // Po wysłaniu czyścimy
+        jobQueue = [];
+        renderQueue();
+        fileInput.value = '';
+        urlInput.value = '';
+        pinWrapper.classList.add('hidden');
+        dropzone.classList.remove('hidden');
 
-                const response = await fetch('/api/print', {
-                    method: 'POST',
-                    headers: { 'x-user-code': verifiedUserCode },
-                    body: formData
-                });
-                
-                const data = await response.json();
-                if (response.ok) {
-                    showMessage(data.message || 'Plik przesłany do systemu.');
-                } else {
-                    showMessage(data.error || 'Wystąpił błąd podczas wysyłania', true);
-                    if(response.status === 403) showMessage('Twój PIN jest nieprawidłowy.', true);
-                }
-            } else if (currentJob.type === 'url') {
-                options.url = currentJob.payload;
-                const response = await fetch('/api/print-url', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'x-user-code': verifiedUserCode
-                    },
-                    body: JSON.stringify(options)
-                });
-                
-                const data = await response.json();
-                if (response.ok) {
-                    showMessage(data.message || 'Plik przesłany do systemu.');
-                    urlInput.value = '';
-                } else {
-                    showMessage(data.error || 'Wystąpił błąd podczas drukowania URL', true);
-                    if(response.status === 403) showMessage('Twój PIN jest nieprawidłowy.', true);
-                }
-            }
-        } catch (error) {
-            showMessage('Błąd połączenia z serwerem.', true);
-        } finally {
-            currentJob = null;
-            fileInput.value = '';
-            pinWrapper.classList.add('hidden');
-            dropzone.classList.remove('hidden');
+        if (errorCount === 0) {
+            showMessage(`Wysłano ${successCount} plik(ów) do systemu drukowania.`);
+        } else {
+            showMessage(`Wysłano ${successCount}, błędy: ${errorCount}`, true);
         }
     };
 
-    // Dropzone & File Input Actions
-    // Przeciwdziałaj bombelkowaniu, żeby np. kliknięcie inputa/buttona URL nie wyzwalało kliku na dropzone
+    // --- DROPZONE & FILE INPUT ---
     dropzone.addEventListener('click', (e) => {
-        if (e.target.closest('#urlGroup')) return; // ignouj jeśli kliknięto sekcję URL
+        if (e.target.closest('#urlGroup')) return;
         fileInput.click();
     });
 
     fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            openModal({ type: 'file', payload: e.target.files[0] });
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        files.forEach(f => addJobToQueue('file', f, f.name));
+
+        // Jeśli 1 plik, od razu otwórz ustawienia
+        if (files.length === 1) {
+            window._editJob(jobQueue[jobQueue.length - 1].id);
         }
     });
 
@@ -322,9 +448,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     dropzone.addEventListener('drop', (e) => {
         const dt = e.dataTransfer;
-        const files = dt.files;
-        if (files.length > 0) {
-            openModal({ type: 'file', payload: files[0] });
+        const files = Array.from(dt.files);
+        if (files.length === 0) return;
+
+        files.forEach(f => addJobToQueue('file', f, f.name));
+        if (files.length === 1) {
+            window._editJob(jobQueue[jobQueue.length - 1].id);
         }
     });
 
@@ -335,24 +464,25 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage('Podaj poprawny adres URL linku przed kontynuacją.', true);
             return;
         }
-        openModal({ type: 'url', payload: url });
+        addJobToQueue('url', url, url);
+        urlInput.value = '';
+        window._editJob(jobQueue[jobQueue.length - 1].id);
     });
 
     // Paste handling
     document.addEventListener('paste', (e) => {
-        // Ignoruj wklejanie jeśli wpisujemy coś np w polu URL
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
             if (items[i].kind === 'file') {
                 const file = items[i].getAsFile();
-                openModal({ type: 'file', payload: file });
+                addJobToQueue('file', file, file.name);
                 break;
             } else if (items[i].kind === 'string' && items[i].type === 'text/plain') {
                 items[i].getAsString((str) => {
                     if (str.startsWith('http://') || str.startsWith('https://')) {
-                        openModal({ type: 'url', payload: str });
+                        addJobToQueue('url', str, str);
                     }
                 });
             }

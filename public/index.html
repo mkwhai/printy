@@ -11,16 +11,16 @@
     <div class="container">
         <header style="position: relative;">
             <h1>printy</h1>
-            <p>Zarządzaj swoimi wydrukami z łatwością</p>
+            <p>drukuj kiedykolwiek, cokolwiek, z łatwością</p>
         </header>
 
             <!-- Zintegrowane Miejsce Akcji (Dropzone + URL) -->
             <section class="card upload-card hero-dropzone" id="dropzone">
                 <div class="upload-content">
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-                    <h2>Przeciągnij i upuść plik</h2>
-                    <p class="mb-2">aby wybrać z dysku kliknij w to pole</p>
-                    <input type="file" id="fileInput" class="hidden">
+                    <h2>Przeciągnij i upuść pliki</h2>
+                    <p class="mb-2">aby wybrać z dysku kliknij w to pole (możesz wybrać kilka)</p>
+                    <input type="file" id="fileInput" class="hidden" multiple>
                     
                     <div class="divider">
                         <span>LUB WPISZ LINK</span>
@@ -32,7 +32,16 @@
                     </div>
                 </div>
             </section>
-            
+
+            <!-- Kolejka dodanych plików -->
+            <section class="card mb-2 hidden" id="fileQueueSection">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h2>Pliki do druku</h2>
+                    <button class="btn btn-primary" id="printAllBtn">Drukuj wszystkie</button>
+                </div>
+                <div id="fileQueueList" style="margin-top:1rem;"></div>
+            </section>
+
             <!-- Kod Dostępu (Wyświetlany po zatwierdzeniu modala modalu) -->
             <div id="pinWrapper" class="card hidden" style="margin-bottom: 2rem; text-align: center;">
                 <h2>Autoryzacja Wydruku</h2>

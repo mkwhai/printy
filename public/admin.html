@@ -46,14 +46,25 @@
         
         <div id="statusMessage" class="status-message hidden"></div>
 
-        <section class="card mb-2" id="settingsSection">
-            <h2>Ustawienia Serwera</h2>
-            <div style="display: flex; gap: 10px; align-items: center; margin-top: 1rem;">
-                <label for="retentionHoursInput">Czas retencji zatwierdzonych plików (w godzinach):</label>
-                <input type="number" id="retentionHoursInput" min="1" max="720" style="width: 100px;">
-                <button class="btn btn-primary" id="saveSettingsBtn">Zapisz</button>
+        <section class="card mb-2" id="queueSection">
+            <h2>Oczekujące Wydruki (Kolejka)</h2>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Użytkownik</th>
+                            <th>Plik</th>
+                            <th>Drukarka</th>
+                            <th>Ustawienia</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody id="queueTableBody">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
             </div>
-            <p class="help-text" style="margin-top:0.5rem;">Zatwierdzone / wysłane do druku pliki PDF i grafiki będą przez ten czas przechowywane na serwerze, a następnie automatycznie skasowane z dysku dla oszczędności miejsca.</p>
         </section>
 
         <section class="card mb-2">
@@ -86,25 +97,14 @@
             </div>
         </section>
 
-        <section class="card mb-2" id="queueSection">
-            <h2>Oczekujące Wydruki (Kolejka)</h2>
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Data</th>
-                            <th>Użytkownik</th>
-                            <th>Plik</th>
-                            <th>Drukarka</th>
-                            <th>Ustawienia</th>
-                            <th>Akcje</th>
-                        </tr>
-                    </thead>
-                    <tbody id="queueTableBody">
-                        <!-- Filled by JS -->
-                    </tbody>
-                </table>
+        <section class="card mb-2" id="settingsSection">
+            <h2>Ustawienia Serwera</h2>
+            <div style="display: flex; gap: 10px; align-items: center; margin-top: 1rem;">
+                <label for="retentionHoursInput">Czas retencji zatwierdzonych plików (w godzinach):</label>
+                <input type="number" id="retentionHoursInput" min="1" max="720" style="width: 100px;">
+                <button class="btn btn-primary" id="saveSettingsBtn">Zapisz</button>
             </div>
+            <p class="help-text" style="margin-top:0.5rem;">Zatwierdzone / wysłane do druku pliki PDF i grafiki będą przez ten czas przechowywane na serwerze, a następnie automatycznie skasowane z dysku dla oszczędności miejsca.</p>
         </section>
 
         <section class="card">
