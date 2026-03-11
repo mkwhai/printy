@@ -24,11 +24,11 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'", "https://unpkg.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             imgSrc: ["'self'", "data:"],
             connectSrc: ["'self'"],
-            fontSrc: ["'self'"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
             objectSrc: ["'none'"],
             frameAncestors: ["'none'"],
         }
@@ -45,7 +45,7 @@ app.use(cors({
 // Rate limiters
 const globalLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 100,
+    max: 300,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Zbyt wiele żądań. Spróbuj ponownie za chwilę.' },
