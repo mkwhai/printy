@@ -86,66 +86,84 @@ header p {
     min-height: 300px !important;
     border-radius: var(--radius) !important;
     cursor: pointer !important;
-    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     position: relative !important;
-    z-index: 1 !important;
+    z-index: 10 !important; /* Above everything else */
     
-    /* Perfect Gradient Border + Solid Interior Trick */
-    border: 3px solid transparent !important;
-    background: 
-        linear-gradient(var(--card-bg), var(--card-bg)) padding-box, 
-        var(--accent-gradient) border-box !important;
-    background-size: 100% 100%, 400% 400% !important;
-    animation: animate-gradient-border 8s ease infinite !important;
+    /* Absolute solid white interior */
+    background-color: #ffffff !important;
+    background-image: none !important;
+    border: none !important;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 
-/* Fix for Safari rectangular glow and massive aura */
+/* Sharp Animated Gradient Border (Just behind the box) */
+.hero-dropzone::after {
+    content: "" !important;
+    position: absolute !important;
+    top: -3px !important;
+    left: -3px !important;
+    right: -3px !important;
+    bottom: -3px !important;
+    background: var(--accent-gradient) !important;
+    background-size: 400% 400% !important;
+    z-index: -1 !important; /* Directly behind the white box */
+    border-radius: calc(var(--radius) + 3px) !important;
+    animation: animate-gradient-border 8s ease infinite !important;
+    opacity: 1 !important;
+}
+
+/* Massive Aura Glow (Deep behind) */
 .hero-dropzone::before {
     content: "" !important;
     position: absolute !important;
-    top: -15px !important;
-    left: -15px !important;
-    right: -15px !important;
-    bottom: -15px !important;
+    top: -5px !important;
+    left: -5px !important;
+    right: -5px !important;
+    bottom: -5px !important;
     background: var(--accent-gradient) !important;
     background-size: 400% 400% !important;
-    z-index: -1 !important;
-    border-radius: calc(var(--radius) + 15px) !important;
+    z-index: -2 !important; /* Deepest layer */
+    border-radius: calc(var(--radius) + 5px) !important;
     animation: animate-gradient-border 8s ease infinite !important;
     opacity: 0.3 !important;
     filter: blur(20px) !important;
     
-    /* Safari Fixes */
+    /* Apple/Safari Smoothness */
     -webkit-backface-visibility: hidden !important;
     backface-visibility: hidden !important;
-    will-change: filter, transform !important;
-    transition: opacity 0.5s ease, filter 0.5s ease !important;
+    will-change: filter, opacity !important;
+    transition: all 0.5s ease !important;
 }
 
 .hero-dropzone h2, .hero-dropzone p, .hero-dropzone .icon {
-    color: var(--text-main) !important;
+    color: #18181b !important;
     text-shadow: none !important;
     position: relative !important;
-    z-index: 2 !important;
+    z-index: 20 !important;
 }
 
 .hero-dropzone:hover {
-    transform: translateY(-5px) scale(1.01) !important;
+    transform: translateY(-5px) !important;
 }
 
 .hero-dropzone:hover::before {
     opacity: 0.6 !important;
-    filter: blur(30px) !important;
+    filter: blur(35px) !important;
+    transform: scale(1.05) !important;
 }
 
 .hero-dropzone.dragover {
-    transform: scale(1.04) !important;
+    transform: scale(1.03) !important;
 }
 
 .hero-dropzone.dragover::before {
-    opacity: 0.8 !important;
-    animation: animate-gradient-border 2s ease infinite !important;
-    filter: blur(40px) !important;
+    opacity: 0.9 !important;
+    filter: blur(45px) !important;
+    animation-duration: 3s !important;
+}
+
+.hero-dropzone.dragover::after {
+    animation-duration: 3s !important;
 }
 
 @keyframes animate-gradient-border {
