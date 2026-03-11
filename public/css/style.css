@@ -6,13 +6,14 @@
     --text-muted: #71717a;
     --card-bg: #ffffff;
     --border: #e4e4e7;
-    --radius: 12px;
+    --radius: 16px;
     --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #18181b;
     --dropzone-bg: #ffffff;
     --dropzone-hover-bg: #fdfdfd;
     --accent-glow: rgba(99, 102, 241, 0.4);
     --accent-gradient: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    --dropzone-gradient-colors: #ee7752, #e73c7e, #23a6d5, #23d5ab;
 }
 
 body.dark-mode {
@@ -29,6 +30,7 @@ body.dark-mode {
     --dropzone-hover-bg: #161618;
     --accent-glow: rgba(139, 92, 246, 0.6);
     --accent-gradient: linear-gradient(-45deg, #4f46e5, #9333ea, #db2777, #2563eb);
+    --dropzone-gradient-colors: #4f46e5, #9333ea, #db2777, #2563eb;
 }
 
 body.dark-mode .btn-primary {
@@ -135,28 +137,29 @@ header p {
 .hero-dropzone::after {
     content: "";
     position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background: linear-gradient(-45deg, var(--dropzone-gradient-colors));
     background-size: 400% 400%;
-    border-radius: calc(var(--radius) + 3px);
+    border-radius: calc(var(--radius) + 4px);
     animation: dropzone-gradient 8s ease infinite;
     z-index: 0;
+    will-change: background-position;
 }
 
 /* Aura glow - deepest layer */
 .hero-dropzone::before {
     content: "";
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background: linear-gradient(-45deg, var(--dropzone-gradient-colors));
     background-size: 400% 400%;
-    border-radius: var(--radius);
+    border-radius: calc(var(--radius) + 4px);
     animation: dropzone-gradient 8s ease infinite;
     filter: blur(25px);
     opacity: 0.3;
@@ -165,18 +168,7 @@ header p {
     backface-visibility: hidden;
     transform: translateZ(0);
     transition: opacity 0.4s ease, filter 0.4s ease;
-}
-
-body.dark-mode .hero-dropzone::after {
-    background: linear-gradient(-45deg, #4f46e5, #9333ea, #db2777, #2563eb);
-    background-size: 400% 400%;
-    animation: dropzone-gradient 8s ease infinite;
-}
-
-body.dark-mode .hero-dropzone::before {
-    background: linear-gradient(-45deg, #4f46e5, #9333ea, #db2777, #2563eb);
-    background-size: 400% 400%;
-    animation: dropzone-gradient 8s ease infinite;
+    will-change: background-position;
 }
 
 /* Content sits above the white cover */
