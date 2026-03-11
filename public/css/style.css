@@ -525,6 +525,18 @@ input[type="url"]:focus {
     font-size: 14px;
 }
 
+.slider svg {
+    stroke-width: 2.5px;
+}
+
+[data-lucide="sun"] { 
+    color: #fbbf24;
+}
+
+[data-lucide="moon"] {
+    color: #f1f5f9;
+}
+
 .slider:before {
     background-color: #fff;
     bottom: 4px;

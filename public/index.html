@@ -6,6 +6,7 @@
     <title>printy - Dedykowana Usługa Drukowania</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="container">
@@ -16,8 +17,8 @@
                 <label class="theme-switch" for="checkbox">
                     <input type="checkbox" id="checkbox" />
                     <div class="slider">
-                        <span>☀️</span>
-                        <span>🌙</span>
+                        <i data-lucide="sun" style="width: 14px; height: 14px;"></i>
+                        <i data-lucide="moon" style="width: 14px; height: 14px;"></i>
                     </div>
                 </label>
             </div>
@@ -211,6 +212,9 @@
         </div>
     </div>
 
+    <script>
+        lucide.createIcons();
+    </script>
     <script src="/js/app.js"></script>
 </body>
 </html>
