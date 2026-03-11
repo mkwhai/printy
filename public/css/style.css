@@ -87,14 +87,32 @@ header p {
     border-radius: var(--radius);
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    background: var(--dropzone-bg);
+    background: var(--card-bg);
     position: relative;
-    z-index: 1;
+    z-index: 10;
     border: none;
 }
 
-/* Gradient Border Effect */
+/* Massive Aura Glow (Behind) */
 .hero-dropzone::before {
+    content: "";
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background: var(--accent-gradient);
+    background-size: 400% 400%;
+    z-index: -2;
+    border-radius: calc(var(--radius) + 4px);
+    animation: animate-gradient 8s ease infinite;
+    opacity: 0.6;
+    filter: blur(20px);
+    transition: all 0.4s;
+}
+
+/* Sharp Gradient Border (On Edge) */
+.hero-dropzone::after {
     content: "";
     position: absolute;
     top: -2px;
@@ -105,9 +123,8 @@ header p {
     background-size: 400% 400%;
     z-index: -1;
     border-radius: calc(var(--radius) + 2px);
-    animation: animate-gradient 10s ease infinite;
-    opacity: 0.3;
-    transition: opacity 0.4s;
+    animation: animate-gradient 8s ease infinite;
+    opacity: 0.8;
 }
 
 .hero-dropzone h2, .hero-dropzone p, .hero-dropzone .icon {
@@ -121,8 +138,12 @@ header p {
 
 .hero-dropzone:hover::before {
     opacity: 1;
-    filter: blur(2px);
-    box-shadow: 0 0 20px 0 var(--accent-glow);
+    filter: blur(30px);
+    transform: scale(1.05);
+}
+
+.hero-dropzone:hover::after {
+    opacity: 1;
 }
 
 .hero-dropzone.dragover {
@@ -131,8 +152,14 @@ header p {
 
 .hero-dropzone.dragover::before {
     opacity: 1;
-    animation: animate-gradient 3s ease infinite, pulse-border 2s infinite;
-    filter: blur(1px);
+    animation: animate-gradient 2s ease infinite;
+    filter: blur(40px);
+    transform: scale(1.1);
+}
+
+.hero-dropzone.dragover::after {
+    opacity: 1;
+    animation: animate-gradient 2s ease infinite;
 }
 
 @keyframes animate-gradient {
