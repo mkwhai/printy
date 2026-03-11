@@ -11,8 +11,8 @@
     --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #18181b;
     --dropzone-bg: #ffffff;
     --dropzone-hover-bg: #fdfdfd;
-    --accent-glow: rgba(24, 24, 27, 0.05);
-    --accent-gradient: linear-gradient(135deg, #ffffff 0%, #f4f4f5 100%);
+    --accent-glow: rgba(99, 102, 241, 0.4);
+    --accent-gradient: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
 }
 
 body.dark-mode {
@@ -27,8 +27,8 @@ body.dark-mode {
     --focus-ring: 0 0 0 2px #09090b, 0 0 0 4px #f4f4f5;
     --dropzone-bg: #111113;
     --dropzone-hover-bg: #161618;
-    --accent-glow: rgba(244, 244, 245, 0.1);
-    --accent-gradient: linear-gradient(135deg, #18181b 0%, #09090b 100%);
+    --accent-glow: rgba(139, 92, 246, 0.6);
+    --accent-gradient: linear-gradient(-45deg, #4f46e5, #9333ea, #db2777, #2563eb);
 }
 
 * {
@@ -87,25 +87,39 @@ header p {
     border: 2px dashed var(--border);
     border-radius: var(--radius);
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     background: var(--accent-gradient);
+    background-size: 400% 400%;
+    animation: animate-gradient 15s ease infinite;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 0 0 0 var(--accent-glow);
+    color: #fff;
+    box-shadow: 0 4px 15px 0 var(--accent-glow);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.hero-dropzone h2, .hero-dropzone p, .hero-dropzone .icon {
+    color: #fff !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .hero-dropzone:hover {
-    border-color: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px -10px var(--accent-glow);
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px 0 var(--accent-glow);
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
 .hero-dropzone.dragover {
-    border-color: var(--primary);
+    transform: scale(1.05);
+    border-color: #fff;
     border-style: solid;
-    background: var(--dropzone-hover-bg);
-    animation: pulse-glow 2s infinite;
-    transform: scale(1.02);
+    animation: animate-gradient 3s ease infinite, pulse-glow 2s infinite;
+}
+
+@keyframes animate-gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 @keyframes pulse-glow {
