@@ -179,14 +179,27 @@ const checkUserCode = async (req, res, next) => {
 };
 
 const sendWebhookNotification = async (userName, fileName) => {
-    const webhookUrl = process.env.WEBHOOK_URL;
-    if (!webhookUrl) return;
     try {
-        await axios.post(webhookUrl, {
-            content: `🖨️ **Nowy dokument do druku oczekuje na moderację!**\n👤 Użytkownik: \`${userName}\`\n📄 Plik: \`${fileName}\``
-        });
+        const messageText = `🖨️ *Nowy dokument do druku (Printy)!*\n👤 Użytkownik: ${userName}\n📄 Plik: ${fileName}`;
+        
+        // 1. WhatsApp poprzez darmowe API CallMeBot
+        if (process.env.WHATSAPP_PHONE && process.env.WHATSAPP_APIKEY) {
+            const phone = process.env.WHATSAPP_PHONE;
+            const apiKey = process.env.WHATSAPP_APIKEY;
+            const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(messageText)}&apikey=${encodeURIComponent(apiKey)}`;
+            await axios.get(url);
+            return; // Zakończ, jeśli pomyślnie wysłano na WhatsApp
+        }
+
+        // 2. Alternatywnie standardowy Webhook (np. Discord)
+        const webhookUrl = process.env.WEBHOOK_URL;
+        if (webhookUrl) {
+            await axios.post(webhookUrl, {
+                content: `🖨️ **Nowy dokument do druku oczekuje na moderację!**\n👤 Użytkownik: \`${userName}\`\n📄 Plik: \`${fileName}\``
+            });
+        }
     } catch (err) {
-        console.error('Błąd powiadomienia Webhook:', err.message);
+        console.error('Błąd powiadomienia (WhatsApp/Webhook):', err.message);
     }
 };
 
