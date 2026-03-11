@@ -22,21 +22,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentJob = null; // { type: 'file', payload: File } | { type: 'url', payload: String }
 
     // Auth and Settings
-    const pinModal = document.getElementById('pinModal');
-    const userPinInput = document.getElementById('userPinInput');
-    const savePinBtn = document.getElementById('savePinBtn');
+    const inlinePinInput = document.getElementById('inlinePinInput');
 
-    // 1. Sprawdź, czy użytkownik ma zapisany PIN
-    if (!localStorage.getItem('printyUserCode')) {
-        pinModal.classList.remove('hidden');
+    // 1. Sprawdź, czy użytkownik ma zapisany PIN i wypełnij pole
+    const savedPin = localStorage.getItem('printyUserCode');
+    if (savedPin) {
+        inlinePinInput.value = savedPin;
     }
 
-    savePinBtn.addEventListener('click', () => {
-        const pin = userPinInput.value.trim();
-        if (pin.length < 3) return showMessage('Wpisz poprawny kod PIN', true);
-        localStorage.setItem('printyUserCode', pin);
-        pinModal.classList.add('hidden');
-        showMessage('Kod zapisany. Możesz drukować.');
+    // Zapisz wpisany PIN po odkliknięciu (zmianie)
+    inlinePinInput.addEventListener('change', () => {
+        const pin = inlinePinInput.value.trim();
+        if (pin.length > 0) {
+            localStorage.setItem('printyUserCode', pin);
+        } else {
+            localStorage.removeItem('printyUserCode');
+        }
     });
 
     // 2. Odczyt zapisanych ustawień druku
@@ -123,10 +124,10 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmPrintBtn.textContent = 'Trwa wysyłanie...';
 
         try {
-            const userCode = localStorage.getItem('printyUserCode');
+            const userCode = inlinePinInput.value.trim();
             if(!userCode) {
                 closeModal();
-                return pinModal.classList.remove('hidden');
+                return showMessage('Wpisz najpierw swój Kod Dostępu (PIN) w polu nad plikiem.', true);
             }
 
             if (currentJob.type === 'file') {
@@ -147,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showMessage(data.message || 'Plik przesłany do systemu.');
                 } else {
                     showMessage(data.error || 'Wystąpił błąd podczas wysyłania', true);
-                    if(response.status === 403) pinModal.classList.remove('hidden');
+                    if(response.status === 403) showMessage('Twój PIN jest nieprawidłowy.', true);
                 }
             } else if (currentJob.type === 'url') {
                 options.url = currentJob.payload;
@@ -166,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     urlInput.value = '';
                 } else {
                     showMessage(data.error || 'Wystąpił błąd podczas drukowania URL', true);
-                    if(response.status === 403) pinModal.classList.remove('hidden');
+                    if(response.status === 403) showMessage('Twój PIN jest nieprawidłowy.', true);
                 }
             }
         } catch (error) {
