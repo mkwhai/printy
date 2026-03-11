@@ -91,6 +91,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 logsTableBody.appendChild(tr);
             });
 
+            // Fetch settings
+            const settingsRes = await fetch('/api/admin/settings', { headers: { 'Authorization': `Bearer ${adminToken}` }});
+            if (settingsRes.ok) {
+                const settings = await settingsRes.json();
+                document.getElementById('retentionHoursInput').value = settings.retention_hours;
+            }
+
         } catch (err) {
             alert('Sesja wygasła lub błędne hasło.');
             location.reload();
@@ -155,6 +162,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+        const hours = document.getElementById('retentionHoursInput').value;
+        const res = await fetch('/api/admin/settings', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ retention_hours: hours })
+        });
+        if(res.ok) {
+            showMessage('Ustawienia zapisane pomyślnie.');
+        } else {
+            showMessage('Błąd podczas zapisywania ustawień.', true);
+        }
+    });
     loginAdminBtn.addEventListener('click', () => {
         const pass = adminPasswordInput.value.trim();
         if(!pass) return;

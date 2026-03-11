@@ -53,12 +53,24 @@ let db;
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id)
       );
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+      CREATE TABLE IF NOT EXISTS retained_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_path TEXT,
+        expires_at DATETIME
+      );
     `);
 
     // Add backwards compatible column
     try {
         await db.exec('ALTER TABLE users ADD COLUMN requires_moderation INTEGER DEFAULT 0;');
     } catch (e) { /* Column already exists or other error */ }
+
+    // Init default settings
+    await db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('retention_hours', '6')`);
 })();
 
 // Setup multer for file uploads
@@ -178,6 +190,16 @@ const checkUserCode = async (req, res, next) => {
     next();
 };
 
+const scheduleFileRetention = async (filePath) => {
+    try {
+        const setting = await db.get("SELECT value FROM settings WHERE key = 'retention_hours'");
+        const hours = parseInt(setting?.value || '6', 10);
+        await db.run("INSERT INTO retained_files (file_path, expires_at) VALUES (?, datetime('now', '+' || ? || ' hours'))", [filePath, hours]);
+    } catch (e) {
+        console.error('Błąd dodawania pliku do retencji:', e.message);
+    }
+};
+
 const sendWebhookNotification = async (userName, fileName) => {
     try {
         const messageText = `🖨️ *Nowy dokument do druku (printy)!*\n👤 Użytkownik: ${userName}\n📄 Plik: ${fileName}`;
@@ -254,14 +276,29 @@ app.get('/api/admin/queue', checkAdmin, async (req, res) => {
     res.json(queue);
 });
 
+app.get('/api/admin/settings', checkAdmin, async (req, res) => {
+    const setting = await db.get("SELECT value FROM settings WHERE key = 'retention_hours'");
+    res.json({ retention_hours: parseInt(setting?.value || '6', 10) });
+});
+
+app.post('/api/admin/settings', checkAdmin, async (req, res) => {
+    const hours = parseInt(req.body.retention_hours, 10);
+    if (!isNaN(hours) && hours > 0) {
+        await db.run("UPDATE settings SET value = ? WHERE key = 'retention_hours'", [hours.toString()]);
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ error: 'Nieprawidlowa wartosc godzin (musi byc > 0).' });
+    }
+});
+
 app.post('/api/admin/queue/:id/approve', checkAdmin, async (req, res) => {
     const job = await db.get('SELECT * FROM print_queue WHERE id = ?', [req.params.id]);
     if (!job) return res.status(404).json({ error: 'Nie znaleziono zadania w kolejce' });
 
     const options = JSON.parse(job.options);
     printFile(job.file_path, job.printer, options, async (err, output, usedPrinter) => {
-        // delete payload
-        fs.unlink(job.file_path, () => {});
+        // Zamiast od razu usuwać, zachowujemy do czasu retencji ustawionego w adminie
+        scheduleFileRetention(job.file_path);
         
         if (err) return res.status(500).json({ error: 'Błąd drukowania', details: err.message });
 
@@ -319,7 +356,7 @@ app.post('/api/print', upload.single('file'), checkUserCode, (req, res) => {
   } else {
     // Direct Print
     printFile(filePath, printerAddress, options, async (err, output, usedPrinter) => {
-      setTimeout(() => fs.unlink(filePath, () => {}), 60000); 
+      scheduleFileRetention(filePath);
 
       if (err) return res.status(500).json({ error: 'Błąd podczas drukowania', details: err.message });
       
@@ -383,7 +420,7 @@ app.post('/api/print-url', checkUserCode, async (req, res) => {
         }).catch(err => res.status(500).json({ error: 'Błąd bazy danych.', details: err.message }));
       } else {
         printFile(filePath, printer, options, async (err, output, usedPrinter) => {
-          setTimeout(() => fs.unlink(filePath, () => {}), 60000);
+          scheduleFileRetention(filePath);
           
           if (err) return res.status(500).json({ error: 'Błąd podczas drukowania', details: err.message });
           
@@ -419,9 +456,23 @@ app.post('/api/setup-printer', checkAdmin, (req, res) => {
     if (error) {
       return res.status(500).json({ error: 'Nie udało się dodać drukarki', details: err.message });
     }
-    res.json({ success: true, message: `Drukarka skonfigurowana.` });
+    res.json({ success: true, stdout, stderr });
   });
 });
+
+// Periodic Cleanup Job (every 5 minutes)
+setInterval(async () => {
+    if (!db) return;
+    try {
+        const expired = await db.all("SELECT * FROM retained_files WHERE expires_at <= datetime('now')");
+        for (const file of expired) {
+            fs.unlink(file.file_path, () => {});
+            await db.run("DELETE FROM retained_files WHERE id = ?", [file.id]);
+        }
+    } catch (e) {
+        console.error('Błąd podczas czyszczenia zatrzymanych plików:', e.message);
+    }
+}, 5 * 60 * 1000);
 
 app.listen(PORT, () => {
   console.log(`printy server running on port ${PORT}`);
