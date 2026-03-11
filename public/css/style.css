@@ -84,42 +84,67 @@ header p {
     justify-content: center;
     text-align: center;
     min-height: 300px;
-    border: 2px dashed var(--border);
     border-radius: var(--radius);
     cursor: pointer;
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--dropzone-bg);
+    position: relative;
+    z-index: 1;
+    border: none;
+}
+
+/* Gradient Border Effect */
+.hero-dropzone::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
     background: var(--accent-gradient);
     background-size: 400% 400%;
-    animation: animate-gradient 15s ease infinite;
-    position: relative;
-    overflow: hidden;
-    color: #fff;
-    box-shadow: 0 4px 15px 0 var(--accent-glow);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    z-index: -1;
+    border-radius: calc(var(--radius) + 2px);
+    animation: animate-gradient 10s ease infinite;
+    opacity: 0.3;
+    transition: opacity 0.4s;
 }
 
 .hero-dropzone h2, .hero-dropzone p, .hero-dropzone .icon {
-    color: #fff !important;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    color: var(--text-main);
+    text-shadow: none;
 }
 
 .hero-dropzone:hover {
     transform: translateY(-5px);
-    box-shadow: 0 15px 35px 0 var(--accent-glow);
-    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.hero-dropzone:hover::before {
+    opacity: 1;
+    filter: blur(2px);
+    box-shadow: 0 0 20px 0 var(--accent-glow);
 }
 
 .hero-dropzone.dragover {
-    transform: scale(1.05);
-    border-color: #fff;
-    border-style: solid;
-    animation: animate-gradient 3s ease infinite, pulse-glow 2s infinite;
+    transform: scale(1.03);
+}
+
+.hero-dropzone.dragover::before {
+    opacity: 1;
+    animation: animate-gradient 3s ease infinite, pulse-border 2s infinite;
+    filter: blur(1px);
 }
 
 @keyframes animate-gradient {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
+}
+
+@keyframes pulse-border {
+    0% { box-shadow: 0 0 0 0 var(--accent-glow); }
+    50% { box-shadow: 0 0 30px 10px var(--accent-glow); }
+    100% { box-shadow: 0 0 0 0 var(--accent-glow); }
 }
 
 @keyframes pulse-glow {
