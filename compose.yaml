@@ -1,0 +1,13 @@
+services:
+  printy:
+    build: .
+    container_name: printy-app
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    # Jeśli wymagane jest specyficzne logowanie:
+    # logging:
+    #   driver: "json-file"
+    #   options:
+    #     max-size: "10m"
+    #     max-file: "3"
