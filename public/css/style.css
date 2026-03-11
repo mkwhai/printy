@@ -9,8 +9,10 @@
     --radius: 12px;
     --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #18181b;
-    --dropzone-bg: #fdfdfd;
-    --dropzone-hover-bg: #fafafa;
+    --dropzone-bg: #ffffff;
+    --dropzone-hover-bg: #fdfdfd;
+    --accent-glow: rgba(24, 24, 27, 0.05);
+    --accent-gradient: linear-gradient(135deg, #ffffff 0%, #f4f4f5 100%);
 }
 
 body.dark-mode {
@@ -23,8 +25,10 @@ body.dark-mode {
     --border: #27272a;
     --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5);
     --focus-ring: 0 0 0 2px #09090b, 0 0 0 4px #f4f4f5;
-    --dropzone-bg: #1c1c1f;
-    --dropzone-hover-bg: #212124;
+    --dropzone-bg: #111113;
+    --dropzone-hover-bg: #161618;
+    --accent-glow: rgba(244, 244, 245, 0.1);
+    --accent-gradient: linear-gradient(135deg, #18181b 0%, #09090b 100%);
 }
 
 * {
@@ -81,14 +85,42 @@ header p {
     text-align: center;
     min-height: 300px;
     border: 2px dashed var(--border);
+    border-radius: var(--radius);
     cursor: pointer;
-    transition: all 0.2s;
-    background-color: var(--dropzone-bg);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--accent-gradient);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 0 0 var(--accent-glow);
 }
 
-.hero-dropzone:hover, .hero-dropzone.dragover {
+.hero-dropzone:hover {
     border-color: var(--primary);
-    background-color: var(--dropzone-hover-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px -10px var(--accent-glow);
+}
+
+.hero-dropzone.dragover {
+    border-color: var(--primary);
+    border-style: solid;
+    background: var(--dropzone-hover-bg);
+    animation: pulse-glow 2s infinite;
+    transform: scale(1.02);
+}
+
+@keyframes pulse-glow {
+    0% {
+        box-shadow: 0 0 0 0 var(--accent-glow);
+        border-color: var(--border);
+    }
+    50% {
+        box-shadow: 0 0 40px 10px var(--accent-glow);
+        border-color: var(--primary);
+    }
+    100% {
+        box-shadow: 0 0 0 0 var(--accent-glow);
+        border-color: var(--border);
+    }
 }
 
 .upload-content { 
