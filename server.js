@@ -445,6 +445,26 @@ app.post('/api/print-url', checkUserCode, async (req, res) => {
   }
 });
 
+// API: Get List of Printers
+app.get('/api/printers', (req, res) => {
+  exec('lpstat -e', (error, stdout, stderr) => {
+    if (error) {
+      // Jeśli brak drukarek lub błąd lpstat, zwracamy pustą listę
+      return res.json({ printers: [], defaultPrinter: null });
+    }
+    
+    const printers = stdout.trim().split('\n').filter(p => p.trim() !== '');
+    
+    exec('lpstat -d', (dError, dStdout) => {
+      let defaultPrinter = null;
+      if (!dError && dStdout.includes(': ')) {
+        defaultPrinter = dStdout.split(': ')[1].trim();
+      }
+      res.json({ printers, defaultPrinter });
+    });
+  });
+});
+
 // API: Setup Local Network Printer
 app.post('/api/setup-printer', checkAdmin, (req, res) => {
   const { printerName, ipAddress } = req.body;

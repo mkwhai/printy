@@ -112,6 +112,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const fetchPrinters = async () => {
+        try {
+            const res = await fetch('/api/printers');
+            if (res.ok) {
+                const { printers, defaultPrinter } = await res.json();
+                const printerSelect = document.getElementById('printerName');
+                const selectionGroup = document.getElementById('printerSelectionGroup');
+                if (!printerSelect || !selectionGroup) return;
+
+                if (printers && printers.length > 1) {
+                    selectionGroup.classList.remove('hidden');
+                    printerSelect.innerHTML = '';
+                    printers.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p;
+                        opt.textContent = p === defaultPrinter ? `${p} (Domyślna)` : p;
+                        if (p === defaultPrinter) opt.selected = true;
+                        printerSelect.appendChild(opt);
+                    });
+                    
+                    // Przywróć poprzednio wybraną drukarkę z localStorage jeśli istnieje
+                    const savedPrinter = localStorage.getItem('printy_printerName');
+                    if (savedPrinter && printers.includes(savedPrinter)) {
+                        printerSelect.value = savedPrinter;
+                    }
+                } else {
+                    selectionGroup.classList.add('hidden');
+                }
+            }
+        } catch (e) {
+            console.error('Błąd pobierania drukarek:', e);
+        }
+    };
+
     const initApp = async () => {
         const savedPin = localStorage.getItem('printyUserCode');
         if (savedPin && savedPin.length === 6) {
@@ -128,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (e) { /* ignore */ }
         }
+        await fetchPrinters();
         dropzone.classList.remove('hidden');
     };
     initApp();
@@ -519,6 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('setupPrinterName').value = '';
                     document.getElementById('setupPrinterIP').value = '';
                     printerSetupBlock.classList.remove('active');
+                    await fetchPrinters();
                 } else {
                     showMessage(data.error || 'Błąd konfiguracji drukarki', true);
                 }
