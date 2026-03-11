@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printy - Dedykowana Usługa Drukowania</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Printy</h1>
+            <p>Zarządzaj swoimi wydrukami z łatwością</p>
+        </header>
+
+        <main>
+            <!-- Konfiguracja Drukarki -->
+            <section class="card settings-card">
+                <h2>Odbiorca Druku</h2>
+                <div class="form-group grid-2">
+                    <div>
+                        <label for="printerName">Kolejka (np. home_printer)</label>
+                        <input type="text" id="printerName" placeholder="Zostaw puste dla domyślnej" value="">
+                    </div>
+                </div>
+                <div class="accordion">
+                    <button class="accordion-btn" id="togglePrinterSetup">Zarządzaj drukarką lokalną (Konfiguracja CUPS)</button>
+                    <div class="accordion-content" id="printerSetupBlock">
+                        <p class="help-text">Ta sekcja pozwala dodać nową drukarkę sieciową (JetDirect na porcie 9100) prosto do serwera Printy.</p>
+                        <div class="form-group grid-2">
+                            <div>
+                                <label for="setupPrinterName">Nazwa drukarki</label>
+                                <input type="text" id="setupPrinterName" placeholder="np. Brother_HL">
+                            </div>
+                            <div>
+                                <label for="setupPrinterIP">Adres IP (lokalny)</label>
+                                <input type="text" id="setupPrinterIP" placeholder="np. 192.168.1.100">
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" id="setupPrinterBtn">Dodaj drukarkę do serwera</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ustawienia Druku -->
+            <section class="card settings-card">
+                <h2>Ustawienia Wydruku</h2>
+                <div class="form-group grid-3">
+                    <div>
+                        <label for="copies">Liczba kopii</label>
+                        <input type="number" id="copies" value="1" min="1" max="100">
+                    </div>
+                    <div>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="duplex">
+                            Druk dwustronny
+                        </label>
+                    </div>
+                    <div>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="color" checked>
+                            Druk w kolorze
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Główne Akcje -->
+            <div class="action-grid">
+                <!-- Drag and Drop Pliku -->
+                <section class="card upload-card" id="dropzone">
+                    <div class="upload-content">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                        <h2>Przeciągnij i upuść plik</h2>
+                        <p>lub kliknij, aby wybrać z dysku</p>
+                        <input type="file" id="fileInput" class="hidden">
+                    </div>
+                </section>
+
+                <!-- Drukuj z URL -->
+                <section class="card url-card">
+                    <h2>Wklej link do pliku</h2>
+                    <div class="form-group">
+                        <input type="url" id="urlInput" placeholder="https://example.com/document.pdf">
+                    </div>
+                    <button class="btn btn-primary w-100" id="printUrlBtn">Drukuj z URL</button>
+                    <p class="help-text text-center mt-2">Działa z bezpośrednimi linkami do PDF i obrazów.</p>
+                </section>
+            </div>
+            
+            <div id="statusMessage" class="status-message hidden"></div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
