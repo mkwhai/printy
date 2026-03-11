@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const { exec } = require('child_process');
@@ -33,15 +34,21 @@ app.use(express.json());
 // Print logic using CUPS 'lp' command
 const printFile = (filePath, printerAddress, options, callback) => {
   // printerAddress can be a CUPS queue name or an IP address (if configured in CUPS)
-  // Options we support: copies, sides (two-sided-long-edge, etc.), fit-to-page
-  const { copies = 1, duplex = false, color = false } = options;
+  // Options we support: copies, sides, color, pageRanges, scale, fitToPage
+  const { 
+    copies = 1, 
+    duplex = false, 
+    color = false,
+    pageRanges = '',
+    scale = '',
+    fitToPage = false
+  } = options;
   
   let command = `lp -n ${copies}`;
   
-  // If printerAddress is provided and contains an IP, we might assume it's a temp queue or CUPS knows it.
-  // We will assume printerAddress is the destination name in CUPS
-  if (printerAddress && printerAddress.trim() !== '') {
-    command += ` -d "${printerAddress}"`;
+  const targetPrinter = printerAddress && printerAddress.trim() !== '' ? printerAddress : process.env.DEFAULT_PRINTER;
+  if (targetPrinter && targetPrinter.trim() !== '') {
+    command += ` -d "${targetPrinter}"`;
   }
   
   if (duplex) {
@@ -52,6 +59,22 @@ const printFile = (filePath, printerAddress, options, callback) => {
   
   if (!color) {
     command += ` -o print-color-mode=monochrome`;
+  }
+
+  if (pageRanges && pageRanges.trim() !== '') {
+    // Escape ranges just in case to prevent injection (simple cleanup)
+    const cleanRanges = pageRanges.replace(/[^0-9,-]/g, '');
+    if (cleanRanges) {
+        command += ` -o page-ranges=${cleanRanges}`;
+    }
+  }
+
+  if (fitToPage) {
+    command += ` -o fit-to-page`;
+  }
+
+  if (scale && !isNaN(parseInt(scale))) {
+    command += ` -o scaling=${parseInt(scale)}`;
   }
   
   command += ` "${filePath}"`;
@@ -79,6 +102,9 @@ app.post('/api/print', upload.single('file'), (req, res) => {
     copies: parseInt(req.body.copies) || 1,
     duplex: req.body.duplex === 'true',
     color: req.body.color === 'true',
+    pageRanges: req.body.pageRanges || '',
+    scale: req.body.scale || '',
+    fitToPage: req.body.fitToPage === 'true'
   };
 
   const filePath = req.file.path;
@@ -127,6 +153,9 @@ app.post('/api/print-url', async (req, res) => {
         copies: parseInt(copies) || 1,
         duplex: duplex === true || duplex === 'true',
         color: color === true || color === 'true',
+        pageRanges: req.body.pageRanges || '',
+        scale: req.body.scale || '',
+        fitToPage: req.body.fitToPage === true || req.body.fitToPage === 'true'
       };
 
       printFile(filePath, printer, options, (err, output) => {

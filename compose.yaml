@@ -4,6 +4,8 @@ services:
     container_name: printy-app
     ports:
       - "3030:3030"
+    env_file:
+      - .env
     restart: unless-stopped
     # Jeśli wymagane jest specyficzne logowanie:
     # logging:
