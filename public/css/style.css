@@ -9,6 +9,22 @@
     --radius: 12px;
     --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #18181b;
+    --dropzone-bg: #fdfdfd;
+    --dropzone-hover-bg: #fafafa;
+}
+
+body.dark-mode {
+    --primary: #f4f4f5;
+    --primary-hover: #e4e4e7;
+    --bg-color: #09090b;
+    --text-main: #f4f4f5;
+    --text-muted: #a1a1aa;
+    --card-bg: #18181b;
+    --border: #27272a;
+    --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+    --focus-ring: 0 0 0 2px #09090b, 0 0 0 4px #f4f4f5;
+    --dropzone-bg: #1c1c1f;
+    --dropzone-hover-bg: #212124;
 }
 
 * {
@@ -67,12 +83,12 @@ header p {
     border: 2px dashed var(--border);
     cursor: pointer;
     transition: all 0.2s;
-    background-color: #fdfdfd;
+    background-color: var(--dropzone-bg);
 }
 
 .hero-dropzone:hover, .hero-dropzone.dragover {
     border-color: var(--primary);
-    background-color: #fafafa;
+    background-color: var(--dropzone-hover-bg);
 }
 
 .upload-content { 
@@ -469,4 +485,69 @@ input[type="url"]:focus {
     background: #dc2626;
     border-color: #dc2626;
     color: #fff;
+}
+
+/* Theme Switcher */
+.theme-switch-wrapper {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    display: flex;
+    align-items: center;
+    z-index: 100;
+}
+
+.theme-switch {
+    display: inline-block;
+    height: 30px;
+    position: relative;
+    width: 60px;
+}
+
+.theme-switch input {
+    display: none;
+}
+
+.slider {
+    background-color: #ccc;
+    bottom: 0;
+    cursor: pointer;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: .4s;
+    border-radius: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    font-size: 14px;
+}
+
+.slider:before {
+    background-color: #fff;
+    bottom: 4px;
+    content: "";
+    height: 22px;
+    left: 4px;
+    position: absolute;
+    transition: .4s;
+    width: 22px;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+input:checked + .slider {
+    background-color: #27272a;
+}
+
+input:checked + .slider:before {
+    transform: translateX(30px);
+}
+
+.theme-switch-wrapper em {
+    margin-left: 10px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
 }
