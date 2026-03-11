@@ -6,9 +6,42 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const sqlite3 = require('sqlite3').verbose();
+const { open } = require('sqlite');
 
 const app = express();
 const PORT = process.env.PORT || 3030;
+
+// Init SQLite DB
+let db;
+(async () => {
+    const dataDir = path.join(__dirname, 'data');
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+    }
+    
+    db = await open({
+      filename: path.join(dataDir, 'database.sqlite'),
+      driver: sqlite3.Database
+    });
+
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        code TEXT NOT NULL UNIQUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        filename TEXT,
+        printer TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+      );
+    `);
+})();
 
 // Setup multer for file uploads
 const storage = multer.diskStorage({
@@ -33,8 +66,6 @@ app.use(express.json());
 
 // Print logic using CUPS 'lp' command
 const printFile = (filePath, printerAddress, options, callback) => {
-  // printerAddress can be a CUPS queue name or an IP address (if configured in CUPS)
-  // Options we support: copies, sides, color, pageRanges, scale, fitToPage
   const { 
     copies = 1, 
     layout = 'portrait',
@@ -80,7 +111,6 @@ const printFile = (filePath, printerAddress, options, callback) => {
   }
 
   if (pageRanges && pageRanges.trim() !== '') {
-    // Escape ranges just in case to prevent injection (simple cleanup)
     const cleanRanges = pageRanges.replace(/[^0-9,-]/g, '');
     if (cleanRanges) {
         command += ` -o page-ranges=${cleanRanges}`;
@@ -105,12 +135,65 @@ const printFile = (filePath, printerAddress, options, callback) => {
       return callback(error);
     }
     console.log(`Print output: ${stdout}`);
-    callback(null, stdout);
+    callback(null, stdout, targetPrinter || 'default');
   });
 };
 
+
+// Auth Middleware
+const checkAdmin = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!process.env.ADMIN_PASSWORD || authHeader !== `Bearer ${process.env.ADMIN_PASSWORD}`) {
+        return res.status(401).json({ error: 'Brak dostępu lub błędne hasło administratora.'});
+    }
+    next();
+};
+
+const checkUserCode = async (req, res, next) => {
+    const userCode = req.body.userCode || req.headers['x-user-code'];
+    if (!userCode) return res.status(401).json({ error: 'Wymagany jest ważny PIN użytkownika, by drukować.'});
+    
+    const user = await db.get('SELECT * FROM users WHERE code = ?', [userCode]);
+    if (!user) return res.status(403).json({ error: 'Nieprawidłowy PIN użytkownika.'});
+    
+    req.user = user;
+    next();
+};
+
+
+// API: Admin endpoints
+app.get('/api/admin/users', checkAdmin, async (req, res) => {
+    const users = await db.all('SELECT * FROM users ORDER BY created_at DESC');
+    res.json(users);
+});
+
+app.post('/api/admin/users', checkAdmin, async (req, res) => {
+    const name = req.body.name || 'Gość';
+    // 6-digit PIN string
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    await db.run('INSERT INTO users (name, code) VALUES (?, ?)', [name, code]);
+    res.json({ success: true, name, code });
+});
+
+app.delete('/api/admin/users/:id', checkAdmin, async (req, res) => {
+    await db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+});
+
+app.get('/api/admin/logs', checkAdmin, async (req, res) => {
+    const logs = await db.all(`
+      SELECT logs.*, users.name as user_name, users.code as user_code
+      FROM logs 
+      LEFT JOIN users ON logs.user_id = users.id 
+      ORDER BY logs.created_at DESC
+      LIMIT 100
+    `);
+    res.json(logs);
+});
+
+
 // API: Print uploaded file
-app.post('/api/print', upload.single('file'), (req, res) => {
+app.post('/api/print', upload.single('file'), checkUserCode, (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Brak pliku' });
   }
@@ -130,24 +213,32 @@ app.post('/api/print', upload.single('file'), (req, res) => {
   };
 
   const filePath = req.file.path;
+  const originalName = req.file.originalname;
 
-  printFile(filePath, printerAddress, options, (err, output) => {
-    // Optionally remove file after printing
+  printFile(filePath, printerAddress, options, async (err, output, usedPrinter) => {
     setTimeout(() => {
       fs.unlink(filePath, () => {});
-    }, 60000); // clear after 1 minute
+    }, 60000); 
 
     if (err) {
       return res.status(500).json({ error: 'Błąd podczas drukowania', details: err.message });
     }
     
+    // Log success
+    try {
+        await db.run('INSERT INTO logs (user_id, filename, printer) VALUES (?, ?, ?)', 
+            [req.user.id, originalName, usedPrinter]
+        );
+    } catch(e) { console.error('Failed to log job', e); }
+
     res.json({ success: true, message: 'Plik wysłany do druku', output });
   });
 });
 
 // API: Print from URL
-app.post('/api/print-url', async (req, res) => {
-  const { url, printer, copies, duplex, color } = req.body;
+app.post('/api/print-url', checkUserCode, async (req, res) => {
+  const { url, printer, copies, duplex, color, layout, paperSize, pagesPerSheet, margins, pageRanges, scale, fitToPage } = req.body;
+  
   if (!url) {
     return res.status(400).json({ error: 'Brak adresu URL' });
   }
@@ -157,7 +248,7 @@ app.post('/api/print-url', async (req, res) => {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
-  const fileName = `${crypto.randomUUID()}.pdf`; // Assuming PDF for URL prints
+  const fileName = `${crypto.randomUUID()}.pdf`;
   const filePath = path.join(uploadDir, fileName);
 
   try {
@@ -173,23 +264,30 @@ app.post('/api/print-url', async (req, res) => {
     writer.on('finish', () => {
       const options = {
         copies: parseInt(copies) || 1,
-        duplex: req.body.duplex || 'one-sided',
-        color: req.body.color || 'color',
-        layout: req.body.layout || 'portrait',
-        paperSize: req.body.paperSize || 'A4',
-        pagesPerSheet: req.body.pagesPerSheet || '1',
-        margins: req.body.margins || 'default',
-        pageRanges: req.body.pageRanges || '',
-        scale: req.body.scale || '',
-        fitToPage: req.body.fitToPage === true || req.body.fitToPage === 'true'
+        duplex: duplex || 'one-sided',
+        color: color || 'color',
+        layout: layout || 'portrait',
+        paperSize: paperSize || 'A4',
+        pagesPerSheet: pagesPerSheet || '1',
+        margins: margins || 'default',
+        pageRanges: pageRanges || '',
+        scale: scale || '',
+        fitToPage: fitToPage === true || fitToPage === 'true'
       };
 
-      printFile(filePath, printer, options, (err, output) => {
+      printFile(filePath, printer, options, async (err, output, usedPrinter) => {
         setTimeout(() => fs.unlink(filePath, () => {}), 60000);
         
         if (err) {
           return res.status(500).json({ error: 'Błąd podczas drukowania', details: err.message });
         }
+        
+        try {
+            await db.run('INSERT INTO logs (user_id, filename, printer) VALUES (?, ?, ?)', 
+                [req.user.id, url, usedPrinter]
+            );
+        } catch(e) { console.error('Failed to log job', e); }
+
         res.json({ success: true, message: 'Plik z URL wysłany do druku', output });
       });
     });
@@ -200,31 +298,22 @@ app.post('/api/print-url', async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ error: 'Błąd pobierania', details: error.message });
+    res.status(500).json({ error: 'Błąd pobierania z podanego URL', details: error.message });
   }
 });
 
 // API: Setup Local Network Printer
-// For a Docker container, often we need to configure a local printer queue
-app.post('/api/setup-printer', (req, res) => {
+app.post('/api/setup-printer', checkAdmin, (req, res) => {
   const { printerName, ipAddress } = req.body;
-  
   if (!printerName || !ipAddress) {
     return res.status(400).json({ error: 'Wymagane parametry: printerName, ipAddress' });
   }
-
-  // Use lpadmin to add printer (socket:// for JetDirect, ipp:// for IPP)
-  // This assumes the container has CUPS running and user has lpadmin rights
   const command = `lpadmin -p "${printerName}" -E -v "socket://${ipAddress}:9100" -m everywhere`;
-  
-  console.log(`Setting up printer: ${command}`);
-  
   exec(command, (error, stdout, stderr) => {
     if (error) {
-      console.error(`Printer setup error: ${error.message}`);
       return res.status(500).json({ error: 'Nie udało się dodać drukarki', details: err.message });
     }
-    res.json({ success: true, message: `Drukarka ${printerName} (${ipAddress}) skonfigurowana.` });
+    res.json({ success: true, message: `Drukarka skonfigurowana.` });
   });
 });
 

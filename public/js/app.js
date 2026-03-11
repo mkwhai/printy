@@ -21,6 +21,45 @@ document.addEventListener('DOMContentLoaded', () => {
     // State
     let currentJob = null; // { type: 'file', payload: File } | { type: 'url', payload: String }
 
+    // Auth and Settings
+    const pinModal = document.getElementById('pinModal');
+    const userPinInput = document.getElementById('userPinInput');
+    const savePinBtn = document.getElementById('savePinBtn');
+
+    // 1. Sprawdź, czy użytkownik ma zapisany PIN
+    if (!localStorage.getItem('printyUserCode')) {
+        pinModal.classList.remove('hidden');
+    }
+
+    savePinBtn.addEventListener('click', () => {
+        const pin = userPinInput.value.trim();
+        if (pin.length < 3) return showMessage('Wpisz poprawny kod PIN', true);
+        localStorage.setItem('printyUserCode', pin);
+        pinModal.classList.add('hidden');
+        showMessage('Kod zapisany. Możesz drukować.');
+    });
+
+    // 2. Odczyt zapisanych ustawień druku
+    const settingsKeys = ['printerName', 'copies', 'pageRanges', 'scale', 'duplexMode', 'colorMode', 'layout', 'paperSize', 'pagesPerSheet', 'margins'];
+    settingsKeys.forEach(key => {
+        const val = localStorage.getItem(`printy_${key}`);
+        if(val) document.getElementById(key).value = val;
+    });
+    if(localStorage.getItem('printy_fitToPage') === 'true') {
+        document.getElementById('fitToPage').checked = true;
+    }
+
+    // 3. Automatyczny powrót (zapis) po edycji dowolnego wejścia modalnego
+    document.querySelectorAll('#printModal input, #printModal select').forEach(el => {
+        el.addEventListener('change', (e) => {
+            if(e.target.type === 'checkbox') {
+                localStorage.setItem(`printy_${e.target.id}`, e.target.checked);
+            } else {
+                localStorage.setItem(`printy_${e.target.id}`, e.target.value);
+            }
+        });
+    });
+
     // Helpers
     const showMessage = (msg, isError = false) => {
         statusMessage.textContent = msg;
@@ -84,6 +123,12 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmPrintBtn.textContent = 'Trwa wysyłanie...';
 
         try {
+            const userCode = localStorage.getItem('printyUserCode');
+            if(!userCode) {
+                closeModal();
+                return pinModal.classList.remove('hidden');
+            }
+
             if (currentJob.type === 'file') {
                 const formData = new FormData();
                 formData.append('file', currentJob.payload);
@@ -93,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const response = await fetch('/api/print', {
                     method: 'POST',
+                    headers: { 'x-user-code': userCode },
                     body: formData
                 });
                 
@@ -101,12 +147,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     showMessage('Plik został poprawnie wysłany do druku.');
                 } else {
                     showMessage(data.error || 'Wystąpił błąd podczas wysyłania', true);
+                    if(response.status === 403) pinModal.classList.remove('hidden');
                 }
             } else if (currentJob.type === 'url') {
                 options.url = currentJob.payload;
                 const response = await fetch('/api/print-url', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-user-code': userCode
+                    },
                     body: JSON.stringify(options)
                 });
                 
@@ -116,6 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     urlInput.value = '';
                 } else {
                     showMessage(data.error || 'Wystąpił błąd podczas drukowania URL', true);
+                    if(response.status === 403) pinModal.classList.remove('hidden');
                 }
             }
         } catch (error) {

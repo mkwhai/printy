@@ -6,6 +6,8 @@ services:
       - "3030:3030"
     env_file:
       - .env
+    volumes:
+      - ./data:/usr/src/app/data
     restart: unless-stopped
     # Jeśli wymagane jest specyficzne logowanie:
     # logging:

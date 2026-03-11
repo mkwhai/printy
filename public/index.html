@@ -9,9 +9,10 @@
 </head>
 <body>
     <div class="container">
-        <header>
+        <header style="position: relative;">
             <h1>Printy</h1>
             <p>Zarządzaj swoimi wydrukami z łatwością</p>
+            <a href="/admin.html" style="position: absolute; top: 0; right: 0; font-size: 0.75rem; color: var(--text-muted); text-decoration: none;">Admin</a>
         </header>
 
         <main>
@@ -163,6 +164,24 @@
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="cancelPrintBtn">Anuluj</button>
                 <button class="btn btn-primary" id="confirmPrintBtn">Drukuj</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal PIN (Blokujący dla nowych użytkowników) -->
+    <div id="pinModal" class="modal-overlay hidden">
+        <div class="modal" style="max-width: 400px; text-align: center;">
+            <div class="modal-header" style="justify-content: center;">
+                <h2>Kod Dostępu</h2>
+            </div>
+            <div class="modal-content">
+                <p class="mb-2">Wpisz 6-cyfrowy PIN, aby korzystać z usługi</p>
+                <div class="form-group">
+                    <input type="text" id="userPinInput" placeholder="Rozwiń u administratora..." style="text-align: center; font-size: 1.5rem; letter-spacing: 0.2em; font-weight: bold;">
+                </div>
+            </div>
+            <div class="modal-actions" style="justify-content: center;">
+                <button class="btn btn-primary w-100" id="savePinBtn">Zapisz i wejdź</button>
             </div>
         </div>
     </div>
