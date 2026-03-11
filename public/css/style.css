@@ -77,95 +77,133 @@ header p {
     box-shadow: var(--shadow);
 }
 
+/* ====== DROPZONE ====== */
 .hero-dropzone {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    min-height: 300px !important;
-    border-radius: var(--radius) !important;
-    cursor: pointer !important;
-    position: relative !important;
-    z-index: 1 !important; /* Main layer */
-    
-    /* Absolute solid white filling - blocking everything below */
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    background-image: none !important;
-    border: none !important;
-    box-shadow: none !important;
-    
-    transition: transform 0.3s ease !important;
-    /* Prevent any clipping of sub-layers */
-    overflow: visible !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 300px;
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    position: relative;
+    overflow: visible;
+    border: none;
+    background: transparent;
+    transition: transform 0.3s ease;
 }
 
-/* THE GRADIENT BORDER LAYER */
+/* White cover - physically blocks gradient from showing through */
+.dropzone-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    z-index: 1;
+}
+
+/* Gradient border - sits behind the white cover */
 .hero-dropzone::after {
-    content: "" !important;
-    position: absolute !important;
-    top: -3px !important;
-    left: -3px !important;
-    right: -3px !important;
-    bottom: -3px !important;
-    z-index: -1 !important; /* Just below the white box */
-    background: var(--accent-gradient) !important;
-    background-size: 400% 400% !important;
-    border-radius: calc(var(--radius) + 3px) !important;
-    animation: animate-gradient-border 8s ease infinite !important;
-    opacity: 1 !important;
+    content: "";
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-size: 400% 400%;
+    border-radius: calc(var(--radius) + 3px);
+    animation: dropzone-gradient 8s ease infinite;
+    z-index: 0;
 }
 
-/* THE AURA GLOW LAYER */
+/* Aura glow - deepest layer */
 .hero-dropzone::before {
-    content: "" !important;
-    position: absolute !important;
-    top: 5px !important; /* Slightly inset to help Safari blend border-radius */
-    left: 5px !important;
-    right: 5px !important;
-    bottom: 5px !important;
-    z-index: -2 !important; /* Deepest layer */
-    background: var(--accent-gradient) !important;
-    background-size: 400% 400% !important;
-    border-radius: var(--radius) !important;
-    filter: blur(25px) !important;
-    animation: animate-gradient-border 8s ease infinite !important;
-    opacity: 0.3 !important;
-    
-    /* Safari Fixes for rectangular clipping and smooth transitions */
-    -webkit-backface-visibility: hidden !important;
-    backface-visibility: hidden !important;
-    -webkit-transform: translateZ(0) !important;
-    transform: translateZ(0) !important;
-    will-change: filter, opacity !important;
-    transition: opacity 0.4s ease, filter 0.4s ease !important;
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-size: 400% 400%;
+    border-radius: var(--radius);
+    animation: dropzone-gradient 8s ease infinite;
+    filter: blur(25px);
+    opacity: 0.3;
+    z-index: -1;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    transition: opacity 0.4s ease, filter 0.4s ease;
 }
 
-.hero-dropzone h2, .hero-dropzone p, .hero-dropzone .icon {
-    color: #18181b !important;
-    text-shadow: none !important;
-    position: relative !important;
-    z-index: 2 !important;
+body.dark-mode .hero-dropzone::after {
+    background: linear-gradient(-45deg, #4f46e5, #9333ea, #db2777, #2563eb);
+    background-size: 400% 400%;
+    animation: dropzone-gradient 8s ease infinite;
+}
+
+body.dark-mode .hero-dropzone::before {
+    background: linear-gradient(-45deg, #4f46e5, #9333ea, #db2777, #2563eb);
+    background-size: 400% 400%;
+    animation: dropzone-gradient 8s ease infinite;
+}
+
+/* Content sits above the white cover */
+.hero-dropzone .upload-content,
+.hero-dropzone h2,
+.hero-dropzone p,
+.hero-dropzone .icon,
+.hero-dropzone .divider,
+.hero-dropzone .url-input-group {
+    position: relative;
+    z-index: 2;
+}
+
+.hero-dropzone .icon {
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+
+.hero-dropzone h2 {
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+    font-size: 1.25rem;
+}
+
+.hero-dropzone p {
+    color: var(--text-muted);
+    font-size: 0.875rem;
 }
 
 .hero-dropzone:hover {
-    transform: translateY(-5px) !important;
+    transform: translateY(-5px);
 }
 
 .hero-dropzone:hover::before {
-    opacity: 0.7 !important;
-    filter: blur(40px) !important;
+    opacity: 0.6;
+    filter: blur(35px);
 }
 
 .hero-dropzone.dragover {
-    transform: scale(1.02) !important;
+    transform: scale(1.02);
 }
 
 .hero-dropzone.dragover::before {
-    opacity: 0.9 !important;
-    filter: blur(50px) !important;
-    /* Keep animation speed constant to avoid sudden jumps */
+    opacity: 0.8;
+    filter: blur(45px);
+}
+
+@keyframes dropzone-gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 @keyframes animate-gradient-border {
@@ -209,18 +247,12 @@ header p {
 }
 
 .hero-dropzone .icon { 
-    color: var(--text-muted); 
-    margin-bottom: 1rem; 
     pointer-events: none;
 }
 .hero-dropzone h2 { 
-    margin-bottom: 0.25rem; 
-    font-size: 1.25rem;
     pointer-events: none;
 }
 .hero-dropzone p { 
-    color: var(--text-muted); 
-    font-size: 0.875rem; 
     pointer-events: none;
 }
 
