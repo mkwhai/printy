@@ -21,56 +21,103 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => statusMessage.classList.add('hidden'), 5000);
     };
 
+    // Safe DOM helper: create element with text content
+    const createCell = (text, styles) => {
+        const td = document.createElement('td');
+        td.textContent = text;
+        if (styles) Object.assign(td.style, styles);
+        return td;
+    };
+
     const fetchDashData = async () => {
         try {
             // Fetch users
             const usersRes = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${adminToken}` }});
             if (!usersRes.ok) throw new Error('Nieautoryzowany dostęp');
             const users = await usersRes.json();
-            
+
             usersTableBody.innerHTML = '';
             users.forEach(u => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${u.id}</td>
-                    <td>${u.name}</td>
-                    <td style="font-weight:bold; letter-spacing:2px; font-family:monospace;">${u.code}</td>
-                    <td>${u.requires_moderation ? 'Wymaga moderacji' : 'Bezpośredni'}</td>
-                    <td>${new Date(u.created_at).toLocaleString('pl-PL')}</td>
-                    <td><button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem" onclick="deleteUser(${u.id})">Usuń</button></td>
-                `;
+
+                tr.appendChild(createCell(u.id));
+                tr.appendChild(createCell(u.name));
+                tr.appendChild(createCell(u.code, { fontWeight: 'bold', letterSpacing: '2px', fontFamily: 'monospace' }));
+                tr.appendChild(createCell(u.requires_moderation ? 'Wymaga moderacji' : 'Bezpośredni'));
+                tr.appendChild(createCell(new Date(u.created_at).toLocaleString('pl-PL')));
+
+                const actionTd = document.createElement('td');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-secondary';
+                deleteBtn.style.cssText = 'padding: 0.25rem 0.5rem; font-size: 0.75rem';
+                deleteBtn.textContent = 'Usuń';
+                deleteBtn.addEventListener('click', () => deleteUser(u.id));
+                actionTd.appendChild(deleteBtn);
+                tr.appendChild(actionTd);
+
                 usersTableBody.appendChild(tr);
             });
 
             // Fetch queue
             const queueRes = await fetch('/api/admin/queue', { headers: { 'Authorization': `Bearer ${adminToken}` }});
             const queue = await queueRes.json();
-            
+
             queueTableBody.innerHTML = '';
             if (queue.length === 0) {
-                queueTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Brak oczekujących wydruków.</td></tr>';
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 6;
+                td.style.textAlign = 'center';
+                td.textContent = 'Brak oczekujących wydruków.';
+                tr.appendChild(td);
+                queueTableBody.appendChild(tr);
             } else {
                 queue.forEach(q => {
                     const tr = document.createElement('tr');
+
                     let optsStr = '';
                     try {
                         const opts = JSON.parse(q.options || '{}');
                         optsStr = `Kopie: ${opts.copies}, Układ: ${opts.layout}, Kolor: ${opts.color}`;
                     } catch(e) {}
 
-                    tr.innerHTML = `
-                        <td>${new Date(q.created_at).toLocaleString('pl-PL')}</td>
-                        <td>${q.user_name} <span class="help-text">(${q.user_code})</span></td>
-                        <td style="word-break: break-all; max-width: 200px;">${q.filename}</td>
-                        <td>${q.printer || '-'}</td>
-                        <td style="font-size: 0.75rem; color: #666;">${optsStr}</td>
-                        <td>
-                            <div style="display:flex; gap:5px;">
-                                <button class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem" onclick="approveJob(${q.id})">Zatwierdź</button>
-                                <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem" onclick="rejectJob(${q.id})">Odrzuć</button>
-                            </div>
-                        </td>
-                    `;
+                    tr.appendChild(createCell(new Date(q.created_at).toLocaleString('pl-PL')));
+
+                    // User name + code cell
+                    const userTd = document.createElement('td');
+                    userTd.textContent = q.user_name + ' ';
+                    const codeSpan = document.createElement('span');
+                    codeSpan.className = 'help-text';
+                    codeSpan.textContent = `(${q.user_code})`;
+                    userTd.appendChild(codeSpan);
+                    tr.appendChild(userTd);
+
+                    tr.appendChild(createCell(q.filename, { wordBreak: 'break-all', maxWidth: '200px' }));
+                    tr.appendChild(createCell(q.printer || '-'));
+                    tr.appendChild(createCell(optsStr, { fontSize: '0.75rem', color: '#666' }));
+
+                    // Action buttons
+                    const actionTd = document.createElement('td');
+                    const actionDiv = document.createElement('div');
+                    actionDiv.style.cssText = 'display:flex; gap:5px;';
+
+                    const approveBtn = document.createElement('button');
+                    approveBtn.className = 'btn btn-primary';
+                    approveBtn.style.cssText = 'padding: 0.25rem 0.5rem; font-size: 0.75rem';
+                    approveBtn.textContent = 'Zatwierdź';
+                    approveBtn.addEventListener('click', () => approveJob(q.id));
+
+                    const rejectBtn = document.createElement('button');
+                    rejectBtn.className = 'btn btn-secondary';
+                    rejectBtn.style.cssText = 'padding: 0.25rem 0.5rem; font-size: 0.75rem';
+                    rejectBtn.textContent = 'Odrzuć';
+                    rejectBtn.addEventListener('click', () => rejectJob(q.id));
+
+                    actionDiv.appendChild(approveBtn);
+                    actionDiv.appendChild(rejectBtn);
+                    actionTd.appendChild(actionDiv);
+                    tr.appendChild(actionTd);
+
                     queueTableBody.appendChild(tr);
                 });
             }
@@ -78,16 +125,24 @@ document.addEventListener('DOMContentLoaded', () => {
             // Fetch logs
             const logsRes = await fetch('/api/admin/logs', { headers: { 'Authorization': `Bearer ${adminToken}` }});
             const logs = await logsRes.json();
-            
+
             logsTableBody.innerHTML = '';
             logs.forEach(l => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${new Date(l.created_at).toLocaleString('pl-PL')}</td>
-                    <td>${l.user_name} <span class="help-text">(${l.user_code})</span></td>
-                    <td style="word-break: break-all; max-width: 250px;">${l.filename}</td>
-                    <td>${l.printer || '-'}</td>
-                `;
+
+                tr.appendChild(createCell(new Date(l.created_at).toLocaleString('pl-PL')));
+
+                const userTd = document.createElement('td');
+                userTd.textContent = l.user_name + ' ';
+                const codeSpan = document.createElement('span');
+                codeSpan.className = 'help-text';
+                codeSpan.textContent = `(${l.user_code})`;
+                userTd.appendChild(codeSpan);
+                tr.appendChild(userTd);
+
+                tr.appendChild(createCell(l.filename, { wordBreak: 'break-all', maxWidth: '250px' }));
+                tr.appendChild(createCell(l.printer || '-'));
+
                 logsTableBody.appendChild(tr);
             });
 
@@ -104,18 +159,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.deleteUser = async (id) => {
+    const deleteUser = async (id) => {
         if(!confirm('Na pewno chcesz usunąć tego użytkownika?')) return;
-        await fetch(`/api/admin/users/${id}`, {
+        await fetch(`/api/admin/users/${encodeURIComponent(id)}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${adminToken}` }
         });
         fetchDashData();
     };
 
-    window.approveJob = async (id) => {
+    const approveJob = async (id) => {
         if(!confirm('Czy na pewno chcesz zatwierdzić i wydrukować ten plik?')) return;
-        const res = await fetch(`/api/admin/queue/${id}/approve`, {
+        const res = await fetch(`/api/admin/queue/${encodeURIComponent(id)}/approve`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${adminToken}` }
         });
@@ -128,9 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.rejectJob = async (id) => {
+    const rejectJob = async (id) => {
         if(!confirm('Czy na pewno chcesz odrzucić wydruk (plik zostanie usunięty)?')) return;
-        const res = await fetch(`/api/admin/queue/${id}/reject`, {
+        const res = await fetch(`/api/admin/queue/${encodeURIComponent(id)}/reject`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${adminToken}` }
         });
@@ -206,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             document.body.classList.remove('dark-mode');
             localStorage.setItem('theme', 'light');
-        }    
+        }
     };
 
     if (toggleSwitch) {

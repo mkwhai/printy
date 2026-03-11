@@ -247,25 +247,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const hasCustom = job.options !== null;
             const statusLabel = hasCustom ? '✅ Własne ustawienia' : '⚙️ Domyślne';
 
-            row.innerHTML = `
-                <span class="fq-name">${escapeHtml(job.name)}</span>
-                <span style="font-size:0.75rem;color:var(--text-muted);margin-right:0.5rem;">${statusLabel}</span>
-                <div class="fq-actions">
-                    <button onclick="window._editJob(${job.id})">Ustawienia</button>
-                    <button class="fq-remove" onclick="window._removeJob(${job.id})">✕</button>
-                </div>
-            `;
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'fq-name';
+            nameSpan.textContent = job.name;
+
+            const statusSpan = document.createElement('span');
+            statusSpan.style.cssText = 'font-size:0.75rem;color:var(--text-muted);margin-right:0.5rem;';
+            statusSpan.textContent = statusLabel;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'fq-actions';
+
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Ustawienia';
+            editBtn.addEventListener('click', () => window._editJob(job.id));
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'fq-remove';
+            removeBtn.textContent = '✕';
+            removeBtn.addEventListener('click', () => window._removeJob(job.id));
+
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(removeBtn);
+
+            row.appendChild(nameSpan);
+            row.appendChild(statusSpan);
+            row.appendChild(actionsDiv);
+
             fileQueueList.appendChild(row);
         });
     };
 
-    const escapeHtml = (str) => {
-        const div = document.createElement('div');
-        div.appendChild(document.createTextNode(str));
-        return div.innerHTML;
-    };
-
-    // Globalne handlery (bo innerHTML onclick)
     window._removeJob = (id) => removeJobFromQueue(id);
     window._editJob = (id) => {
         const job = jobQueue.find(j => j.id === id);
