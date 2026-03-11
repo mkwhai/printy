@@ -31,12 +31,15 @@ app.use(helmet({
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             objectSrc: ["'none'"],
             frameAncestors: ["'none'"],
+            upgradeInsecureRequests: null, // Don't force upgrade HTTP to HTTPS
         }
     },
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: false,
     crossOriginResourcePolicy: false,
-    hsts: false, // Disable HSTS as we are often on local IP without HTTPS
+    hsts: {
+        maxAge: 0, // Tell browser to clear any previous HSTS instructions for this domain/IP
+    },
 }));
 
 // CORS: only same-origin by default
