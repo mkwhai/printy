@@ -273,11 +273,8 @@ const printFile = (filePath, printerAddress, options, callback) => {
   const safeCopies = Math.max(1, Math.min(100, parseInt(copies, 10) || 1));
   args.push('-n', String(safeCopies));
 
-  // Printer
+  // We will resolve the actual printer name right before execution to handle fallbacks
   const targetPrinter = printerAddress && printerAddress.trim() !== '' ? printerAddress : process.env.DEFAULT_PRINTER;
-  if (targetPrinter && validatePrinterName(targetPrinter)) {
-    args.push('-d', targetPrinter.trim());
-  }
 
   // Duplex
   if (['one-sided', 'two-sided-long-edge', 'two-sided-short-edge'].includes(duplex)) {
@@ -336,16 +333,40 @@ const printFile = (filePath, printerAddress, options, callback) => {
     return callback(new Error('Nieprawidłowa ścieżka pliku.'));
   }
   args.push('--', resolvedPath);
+  
+  // Final Printer Resolution
+  execFile('lpstat', ['-e'], (err, stdout) => {
+    const systemsPrinters = stdout.trim().split('\n').filter(p => p.trim() !== '');
+    let finalPrinter = targetPrinter;
 
-  console.log(`Executing print: lp ${args.join(' ')}`);
-
-  execFile('lp', args, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Print error: ${error.message}`);
-      return callback(error);
+    if (!systemsPrinters.includes(targetPrinter)) {
+        if (systemsPrinters.length > 0) {
+            finalPrinter = systemsPrinters[0];
+            console.log(`Printer "${targetPrinter}" not found, falling back to: ${finalPrinter}`);
+        }
     }
-    console.log(`Print output: ${stdout}`);
-    callback(null, stdout, targetPrinter || 'default');
+
+    const finalArgs = [...args];
+    if (finalPrinter && validatePrinterName(finalPrinter)) {
+        // Find index of '--' and insert '-d printer' before it
+        const dashIndex = finalArgs.indexOf('--');
+        if (dashIndex !== -1) {
+            finalArgs.splice(dashIndex, 0, '-d', finalPrinter.trim());
+        } else {
+            finalArgs.push('-d', finalPrinter.trim());
+        }
+    }
+
+    console.log(`Executing print: lp ${finalArgs.join(' ')}`);
+
+    execFile('lp', finalArgs, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Print error: ${error.message}`);
+            return callback(error);
+        }
+        console.log(`Print output: ${stdout}`);
+        callback(null, stdout, finalPrinter || 'default');
+    });
   });
 };
 
