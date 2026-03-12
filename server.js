@@ -735,12 +735,12 @@ app.post('/api/setup-printer', authLimiter, checkAdmin, (req, res) => {
     return res.status(400).json({ error: 'Nieprawidłowy adres IP drukarki.' });
   }
 
-  // Use LPD protocol with PXL Mono driver (very stable fallback for Brother printers)
+  // Use RAW socket protocol with PCL6 (pxlmono) driver - standard for most network printers
   const args = [
     '-p', printerName.trim(), 
     '-E', 
-    '-v', `lpd://${ipAddress.trim()}/BINARY_P1`, 
-    '-m', 'pxlmono.ppd'
+    '-v', `socket://${ipAddress.trim()}:9100`, 
+    '-m', 'lsb/usr/cupsfilters/pxlmono.ppd'
   ];
 
   try {
@@ -750,7 +750,7 @@ app.post('/api/setup-printer', authLimiter, checkAdmin, (req, res) => {
         console.error(`lpadmin stderr: ${stderr}`);
         return res.status(500).json({ error: 'Nie udało się dodać drukarki', details: error.message, stderr });
       }
-      console.log(`Printer added successfully via LPD: ${printerName}`);
+      console.log(`Printer added successfully via Socket/PXL: ${printerName}`);
       res.json({ success: true, stdout, stderr });
     });
   } catch (err) {
