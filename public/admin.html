@@ -109,6 +109,22 @@
             </div>
         </section>
 
+        <section class="card mb-2" id="printerManagementSection">
+            <h2>Zarządzanie Drukarkami (CUPS)</h2>
+            <p class="help-text mb-2">Dodaj drukarkę sieciową (JetDirect/AppSocket protokół, port 9100).</p>
+            <div class="form-group grid-2" style="margin-top: 1rem;">
+                <div>
+                    <label for="setupPrinterName">Nazwa drukarki (bez spacji)</label>
+                    <input type="text" id="setupPrinterName" placeholder="np. Brother_HL">
+                </div>
+                <div>
+                    <label for="setupPrinterIP">Adres IP drukarki</label>
+                    <input type="text" id="setupPrinterIP" placeholder="np. 192.168.1.100">
+                </div>
+            </div>
+            <button class="btn btn-primary" id="setupPrinterBtn">Dodaj drukarkę do serwera</button>
+        </section>
+
         <section class="card mb-2" id="settingsSection">
             <h2>Ustawienia Serwera</h2>
             <div style="display: flex; gap: 10px; align-items: center; margin-top: 1rem;">

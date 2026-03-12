@@ -230,6 +230,39 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage('Błąd podczas zapisywania ustawień.', true);
         }
     });
+
+    const setupPrinterBtn = document.getElementById('setupPrinterBtn');
+    if (setupPrinterBtn) {
+        setupPrinterBtn.addEventListener('click', async () => {
+            const printerName = document.getElementById('setupPrinterName').value.trim();
+            const ipAddress = document.getElementById('setupPrinterIP').value.trim();
+            if (!printerName || !ipAddress) {
+                return showMessage('Uzupełnij nazwę drukarki i jej adres IP', true);
+            }
+            showMessage('Trwa dodawanie drukarki do serwera...', false);
+            try {
+                const response = await fetch('/api/setup-printer', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify({ printerName, ipAddress })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage(`Zakończono pomyślnie. Drukarka "${printerName}" została dodana.`);
+                    document.getElementById('setupPrinterName').value = '';
+                    document.getElementById('setupPrinterIP').value = '';
+                    fetchDashData();
+                } else {
+                    showMessage(data.error || 'Błąd konfiguracji drukarki', true);
+                }
+            } catch (error) {
+                showMessage('Błąd połączenia z serwerem.', true);
+            }
+        });
+    }
     loginAdminBtn.addEventListener('click', () => {
         const pass = adminPasswordInput.value.trim();
         if(!pass) return;

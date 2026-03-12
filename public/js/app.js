@@ -596,37 +596,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Admin Panel Actions
-    if (togglePrinterSetup) {
-        togglePrinterSetup.addEventListener('click', () => printerSetupBlock.classList.toggle('active'));
-    }
-
-    if (setupPrinterBtn) {
-        setupPrinterBtn.addEventListener('click', async () => {
-            const printerName = document.getElementById('setupPrinterName').value.trim();
-            const ipAddress = document.getElementById('setupPrinterIP').value.trim();
-            if (!printerName || !ipAddress) { showMessage('Uzupełnij nazwę drukarki i jej adres IP', true); return; }
-            showMessage('Trwa dodawanie drukarki do serwera...', false);
-            try {
-                const response = await fetch('/api/setup-printer', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ printerName, ipAddress })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    showMessage(`Zakończono pomyślnie. Możesz wpisać "${printerName}" w polu Odbiorca.`);
-                    document.getElementById('setupPrinterName').value = '';
-                    document.getElementById('setupPrinterIP').value = '';
-                    printerSetupBlock.classList.remove('active');
-                    await fetchPrinters();
-                } else {
-                    showMessage(data.error || 'Błąd konfiguracji drukarki', true);
-                }
-            } catch (error) { showMessage('Błąd połączenia z serwerem.', true); }
-        });
-    }
-
     // Theme Switch Logic
     const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
     const currentTheme = localStorage.getItem('theme');
