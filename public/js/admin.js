@@ -154,8 +154,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
         } catch (err) {
-            alert('Sesja wygasła lub błędne hasło.');
-            location.reload();
+            console.error('Fetch error:', err);
+            showMessage('Błąd podczas pobierania danych. Sprawdź hasło lub połączenie.', true);
+            // Only reload if it's strictly an auth error
+            if (err.message.includes('401')) {
+                setTimeout(() => location.reload(), 2000);
+            }
         }
     };
 
@@ -263,13 +267,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    loginAdminBtn.addEventListener('click', () => {
+    loginAdminBtn.addEventListener('click', async () => {
         const pass = adminPasswordInput.value.trim();
         if(!pass) return;
-        adminToken = pass;
-        loginModal.classList.add('hidden');
-        dashboard.classList.remove('hidden');
-        fetchDashData();
+        
+        // Weryfikacja hasła przed wejściem
+        loginAdminBtn.disabled = true;
+        loginAdminBtn.textContent = 'Logowanie...';
+        
+        try {
+            const res = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${pass}` }});
+            if (res.ok) {
+                adminToken = pass;
+                loginModal.classList.add('hidden');
+                dashboard.classList.remove('hidden');
+                fetchDashData();
+            } else if (res.status === 429) {
+                alert('Zbyt wiele prób logowania. Odczekaj minutę.');
+            } else {
+                alert('Błędne hasło administratora.');
+            }
+        } catch (e) {
+            alert('Błąd połączenia z serwerem.');
+        } finally {
+            loginAdminBtn.disabled = false;
+            loginAdminBtn.textContent = 'Zaloguj';
+        }
     });
 
     adminPasswordInput.addEventListener('keypress', (e) => {

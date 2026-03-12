@@ -61,7 +61,7 @@ app.use(globalLimiter);
 
 const authLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 10,
+    max: 50,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Zbyt wiele prób logowania. Spróbuj ponownie za minutę.' },
