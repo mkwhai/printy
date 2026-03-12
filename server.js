@@ -41,6 +41,7 @@ app.use(helmet({
     hsts: {
         maxAge: 0, // Tell browser to clear any previous HSTS instructions for this domain/IP
     },
+    originAgentCluster: false,
 }));
 
 // CORS: only same-origin by default
