@@ -7,6 +7,7 @@ services:
       - .env
     volumes:
       - ./data:/usr/src/app/data
+      - ./cups_config:/etc/cups
     restart: unless-stopped
     # Jeśli wymagane jest specyficzne logowanie:
     # logging:
