@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const printerSelect = document.getElementById('printerName');
                 const selectionGroup = document.getElementById('printerSelectionGroup');
                 if (!printerSelect || !selectionGroup) return;
-                if (printers && printers.length > 1) {
+                if (printers && printers.length > 0) {
                     selectionGroup.classList.remove('hidden');
                     printerSelect.innerHTML = '';
                     printers.forEach(p => {
@@ -138,7 +138,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         printerSelect.appendChild(opt);
                     });
                     const savedPrinter = localStorage.getItem('printy_printerName');
-                    if (savedPrinter && printers.includes(savedPrinter)) printerSelect.value = savedPrinter;
+                    if (savedPrinter && printers.includes(savedPrinter)) {
+                        printerSelect.value = savedPrinter;
+                    } else if (!printerSelect.value && printers.length > 0) {
+                        // If no default matched or saved, pick the first one
+                        printerSelect.value = printers[0];
+                    }
                 } else {
                     selectionGroup.classList.add('hidden');
                 }
