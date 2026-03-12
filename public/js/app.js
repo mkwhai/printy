@@ -186,6 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ====== PREVIEW SYSTEM ======
+    const previewPage = document.getElementById('previewPage');
+
     const cleanupPreview = () => {
         if (currentPreviewUrl) { URL.revokeObjectURL(currentPreviewUrl); currentPreviewUrl = null; }
         currentPdfDoc = null;
@@ -202,7 +204,74 @@ document.addEventListener('DOMContentLoaded', () => {
         previewPageInfo.textContent = '1 / 1';
         prevPageBtn.disabled = true;
         nextPageBtn.disabled = true;
+        // Reset preview effects
+        [previewCanvas, previewImage].forEach(t => {
+            t.style.transform = '';
+            t.style.filter = '';
+        });
+        if (previewPage) {
+            previewPage.style.padding = '';
+        }
     };
+
+    // Apply visual effects to preview based on current settings
+    const applyPreviewEffects = () => {
+        // Target both canvas and image — whichever is active
+        const targets = [previewCanvas, previewImage];
+        const activeTarget = targets.find(t => !t.classList.contains('hidden'));
+        if (!activeTarget) return;
+
+        const transforms = [];
+        let filterStr = '';
+
+        // Scale
+        const scaleEl = document.getElementById('scale');
+        const scaleVal = parseInt(scaleEl?.value, 10);
+        if (!isNaN(scaleVal) && scaleVal >= 10 && scaleVal <= 200 && scaleVal !== 100) {
+            transforms.push(`scale(${scaleVal / 100})`);
+        }
+
+        // Layout rotation
+        const layoutEl = document.getElementById('layout');
+        if (layoutEl && layoutEl.value === 'landscape') {
+            transforms.push('rotate(-90deg)');
+        }
+
+        // Color mode — grayscale
+        const colorEl = document.getElementById('colorMode');
+        if (colorEl && colorEl.value === 'bw') {
+            filterStr = 'grayscale(100%)';
+        }
+
+        // Margins — visual padding on the page container
+        const marginsEl = document.getElementById('margins');
+        if (previewPage && marginsEl) {
+            if (marginsEl.value === 'none') {
+                previewPage.style.padding = '0';
+            } else if (marginsEl.value === 'minimum') {
+                previewPage.style.padding = '4px';
+            } else {
+                previewPage.style.padding = '';
+            }
+        }
+
+        // Apply to ALL targets (both canvas and img) so switching doesn't lose state
+        targets.forEach(t => {
+            t.style.transform = transforms.join(' ');
+            t.style.filter = filterStr;
+            t.style.transition = 'transform 0.3s ease, filter 0.3s ease';
+            t.style.transformOrigin = 'center center';
+        });
+    };
+
+    // Listen for settings changes that affect preview
+    ['scale', 'colorMode', 'layout', 'margins'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', applyPreviewEffects);
+            el.addEventListener('input', applyPreviewEffects);
+        }
+    });
 
     const getFileExtension = (name) => (name || '').split('.').pop().toLowerCase();
     const isImageFile = (ext) => ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
@@ -226,6 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
             previewImage.classList.remove('hidden');
             previewImage.src = currentPreviewUrl;
             previewNav.style.visibility = 'hidden';
+            previewImage.onload = () => applyPreviewEffects();
         } else if (isPdfFile(ext) && window.pdfjsLib) {
             try {
                 const arrayBuffer = await file.arrayBuffer();
@@ -238,6 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewNav.style.visibility = 'visible';
                 updatePageNav();
                 await renderPdfPage(currentPage);
+                applyPreviewEffects();
             } catch (err) {
                 console.error('PDF preview error:', err);
                 previewPlaceholder.querySelector('p').textContent = 'Błąd ładowania PDF';
@@ -257,6 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
             previewCanvas.height = viewport.height;
             const ctx = previewCanvas.getContext('2d');
             await page.render({ canvasContext: ctx, viewport }).promise;
+            applyPreviewEffects();
         } catch (err) { console.error('PDF page render error:', err); }
     };
 

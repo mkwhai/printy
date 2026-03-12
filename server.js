@@ -27,7 +27,7 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdnjs.cloudflare.com"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             imgSrc: ["'self'", "data:", "blob:"],
-            connectSrc: ["'self'", "https://unpkg.com"],
+            connectSrc: ["'self'", "https://unpkg.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             workerSrc: ["'self'", "blob:", "https://cdnjs.cloudflare.com"],
             objectSrc: ["'none'"],

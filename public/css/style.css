@@ -460,6 +460,8 @@ body.dark-mode .print-preview-panel {
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    transform-origin: center center;
+    transition: transform 0.3s ease, filter 0.3s ease, padding 0.3s ease;
 }
 
 .preview-page canvas {
@@ -468,6 +470,8 @@ body.dark-mode .print-preview-panel {
     max-height: 62vh;
     width: auto;
     height: auto;
+    transform-origin: center center;
+    transition: transform 0.3s ease, filter 0.3s ease;
 }
 
 .preview-page img {
@@ -477,6 +481,8 @@ body.dark-mode .print-preview-panel {
     width: auto;
     height: auto;
     object-fit: contain;
+    transform-origin: center center;
+    transition: transform 0.3s ease, filter 0.3s ease;
 }
 
 .preview-placeholder {
