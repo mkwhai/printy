@@ -105,116 +105,142 @@
         </main>
     </div>
 
-    <!-- Modal Zaawansowanych Ustawień Druku -->
-    <div id="printModal" class="modal-overlay hidden">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Ustawienia Wydruku</h2>
-                <button class="close-btn" id="closeModalBtn">&times;</button>
+    <!-- Print Dialog (Chrome/macOS style) -->
+    <div id="printModal" class="print-dialog-overlay hidden">
+        <div class="print-dialog">
+            <!-- Preview Panel (Left) -->
+            <div class="print-preview-panel">
+                <div class="preview-area" id="previewArea">
+                    <div class="preview-page" id="previewPage">
+                        <canvas id="previewCanvas"></canvas>
+                        <img id="previewImage" class="hidden" alt="Podgląd">
+                        <div id="previewPlaceholder" class="preview-placeholder">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <p>Podgląd niedostępny</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="preview-nav" id="previewNav">
+                    <button class="preview-nav-btn" id="prevPageBtn" disabled title="Poprzednia strona">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <span id="previewPageInfo">1 / 1</span>
+                    <button class="preview-nav-btn" id="nextPageBtn" disabled title="Następna strona">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
             </div>
-            <div class="modal-content">
-                <p id="modalFileName" class="modal-file-name"></p>
-                
-                <div class="form-group hidden" id="printerSelectionGroup">
-                    <label for="printerName">Odbiorca (Drukarka)</label>
-                    <select id="printerName"></select>
-                </div>
 
-                <div class="form-group grid-2">
-                    <div>
+            <!-- Settings Panel (Right) -->
+            <div class="print-settings-panel">
+                <div class="print-settings-header">
+                    <h2>Drukuj</h2>
+                    <button class="close-btn" id="closeModalBtn">&times;</button>
+                </div>
+                <p id="modalFileName" class="print-file-name"></p>
+
+                <div class="print-settings-body">
+                    <div class="setting-group" id="printerSelectionGroup">
+                        <label for="printerName">Drukarka</label>
+                        <select id="printerName"></select>
+                    </div>
+
+                    <div class="setting-group">
                         <label for="pageRanges">Strony</label>
-                        <input type="text" id="pageRanges" placeholder="np. Wszystkie lub 1-5, 8">
+                        <input type="text" id="pageRanges" placeholder="Wszystkie (np. 1-5, 8)">
                     </div>
-                    <div>
-                        <label for="copies">Kopie</label>
-                        <input type="number" id="copies" value="1" min="1" max="100">
-                    </div>
-                </div>
 
-                <div class="form-group grid-2">
-                    <div>
-                        <label for="layout">Układ</label>
-                        <select id="layout">
-                            <option value="portrait">Pionowa</option>
-                            <option value="landscape">Pozioma</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="colorMode">Kolor</label>
-                        <select id="colorMode">
-                            <option value="color">Kolor</option>
-                            <option value="bw">Czarno-biały</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="accordion pt-1">
-                    <button class="accordion-btn" id="toggleMoreSettings" type="button">Więcej ustawień</button>
-                    <div class="accordion-content" id="moreSettingsBlock">
-                        <div class="form-group grid-2">
-                            <div>
-                                <label for="paperSize">Rozmiar papieru</label>
-                                <select id="paperSize">
-                                    <option value="A4">A4</option>
-                                    <option value="A5">A5</option>
-                                    <option value="Letter">Letter</option>
-                                    <option value="Legal">Legal</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="pagesPerSheet">Stron na arkusz</label>
-                                <select id="pagesPerSheet">
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="4">4</option>
-                                    <option value="6">6</option>
-                                    <option value="9">9</option>
-                                    <option value="16">16</option>
-                                </select>
-                            </div>
+                    <div class="setting-row-2col">
+                        <div class="setting-group">
+                            <label for="copies">Kopie</label>
+                            <input type="number" id="copies" value="1" min="1" max="100">
                         </div>
-
-                        <div class="form-group grid-2">
-                            <div>
-                                <label for="margins">Marginesy</label>
-                                <select id="margins">
-                                    <option value="default">Domyślne</option>
-                                    <option value="none">Brak marginesów</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="scale">Skala</label>
-                                <input type="number" id="scale" placeholder="Domyślna (100)" min="1" max="200">
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="duplexMode">Wydruk dwustronny</label>
-                            <select id="duplexMode">
-                                <option value="one-sided">Jednostronnie</option>
-                                <option value="two-sided-long-edge">Drukuj po obu stronach (odwróć wzdłuż długiej krawędzi)</option>
-                                <option value="two-sided-short-edge">Drukuj po obu stronach (odwróć wzdłuż krótkiej krawędzi)</option>
+                        <div class="setting-group">
+                            <label for="layout">Układ</label>
+                            <select id="layout">
+                                <option value="portrait">Pionowy</option>
+                                <option value="landscape">Poziomy</option>
                             </select>
                         </div>
-                        
-                        <div class="form-group checkbox-grid pt-1">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="fitToPage">
-                                Dopasuj do strony
-                            </label>
+                    </div>
+
+                    <div class="setting-row-2col">
+                        <div class="setting-group">
+                            <label for="colorMode">Kolor</label>
+                            <select id="colorMode">
+                                <option value="color">Kolor</option>
+                                <option value="bw">Czarno-biały</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label for="paperSize">Papier</label>
+                            <select id="paperSize">
+                                <option value="A4">A4</option>
+                                <option value="A5">A5</option>
+                                <option value="Letter">Letter</option>
+                                <option value="Legal">Legal</option>
+                            </select>
                         </div>
                     </div>
+
+                    <div class="setting-row-2col">
+                        <div class="setting-group">
+                            <label for="scale">Skala (%)</label>
+                            <input type="number" id="scale" placeholder="100" min="10" max="200">
+                        </div>
+                        <div class="setting-group">
+                            <label for="pagesPerSheet">Stron / arkusz</label>
+                            <select id="pagesPerSheet">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="4">4</option>
+                                <option value="6">6</option>
+                                <option value="9">9</option>
+                                <option value="16">16</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="duplexMode">Druk dwustronny</label>
+                        <select id="duplexMode">
+                            <option value="one-sided">Jednostronnie</option>
+                            <option value="two-sided-long-edge">Dwustronnie (dł. krawędź)</option>
+                            <option value="two-sided-short-edge">Dwustronnie (kr. krawędź)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="margins">Marginesy</label>
+                        <select id="margins">
+                            <option value="default">Domyślne</option>
+                            <option value="none">Brak</option>
+                            <option value="minimum">Minimalne</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group setting-checkbox">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="fitToPage">
+                            Dopasuj do strony
+                        </label>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" id="cancelPrintBtn">Anuluj</button>
-                <button class="btn btn-primary" id="confirmPrintBtn">Drukuj</button>
+
+                <div class="print-dialog-actions">
+                    <button class="btn btn-secondary" id="cancelPrintBtn">Anuluj</button>
+                    <button class="btn btn-primary" id="confirmPrintBtn">Zapisz ustawienia</button>
+                </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         lucide.createIcons();
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
     </script>
     <script src="/js/app.js"></script>
 </body>

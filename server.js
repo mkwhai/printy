@@ -24,11 +24,12 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://cdnjs.cloudflare.com"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            imgSrc: ["'self'", "data:"],
+            imgSrc: ["'self'", "data:", "blob:"],
             connectSrc: ["'self'", "https://unpkg.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            workerSrc: ["'self'", "blob:", "https://cdnjs.cloudflare.com"],
             objectSrc: ["'none'"],
             frameAncestors: ["'none'"],
             upgradeInsecureRequests: null, // Don't force upgrade HTTP to HTTPS

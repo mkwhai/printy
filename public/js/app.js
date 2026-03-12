@@ -16,14 +16,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmPrintBtn = document.getElementById('confirmPrintBtn');
     const modalFileName = document.getElementById('modalFileName');
 
+    // Preview Elements
+    const previewCanvas = document.getElementById('previewCanvas');
+    const previewImage = document.getElementById('previewImage');
+    const previewPlaceholder = document.getElementById('previewPlaceholder');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    const previewPageInfo = document.getElementById('previewPageInfo');
+    const previewNav = document.getElementById('previewNav');
+
+    // Preview State
+    let currentPdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 1;
+    let currentPreviewUrl = null;
+
     // Admin Elements
     const togglePrinterSetup = document.getElementById('togglePrinterSetup');
     const printerSetupBlock = document.getElementById('printerSetupBlock');
     const setupPrinterBtn = document.getElementById('setupPrinterBtn');
 
     // State
-    let jobQueue = []; // Array of { id, type: 'file'|'url', payload, name, options }
-    let editingJobId = null; // ID of job currently being edited in modal
+    let jobQueue = [];
+    let editingJobId = null;
     let verifiedUserCode = null;
     let nextJobId = 0;
 
@@ -47,11 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dropzone.classList.remove('hidden');
                 fileQueueSection.classList.toggle('hidden', jobQueue.length === 0);
                 if (pinError) pinError.classList.add('hidden');
-                
-                // Automatycznie kontynuuj drukowanie po zalogowaniu
-                if (jobQueue.length > 0) {
-                    await submitAllJobs();
-                }
+                if (jobQueue.length > 0) await submitAllJobs();
             } else {
                 handlePinError(showVisualError);
             }
@@ -76,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     pinBoxes.forEach((box, index) => {
-        box.addEventListener('input', (e) => {
+        box.addEventListener('input', () => {
             box.value = box.value.replace(/[^0-9]/g, '');
             if (box.value.length === 1) {
                 if (index < pinBoxes.length - 1) {
@@ -87,13 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-
         box.addEventListener('keydown', (e) => {
-            if (e.key === 'Backspace' && box.value === '') {
-                if (index > 0) pinBoxes[index - 1].focus();
-            }
+            if (e.key === 'Backspace' && box.value === '' && index > 0) pinBoxes[index - 1].focus();
         });
-        
         box.addEventListener('paste', (e) => {
             e.preventDefault();
             const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
@@ -120,7 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const printerSelect = document.getElementById('printerName');
                 const selectionGroup = document.getElementById('printerSelectionGroup');
                 if (!printerSelect || !selectionGroup) return;
-
                 if (printers && printers.length > 1) {
                     selectionGroup.classList.remove('hidden');
                     printerSelect.innerHTML = '';
@@ -131,19 +137,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (p === defaultPrinter) opt.selected = true;
                         printerSelect.appendChild(opt);
                     });
-                    
-                    // Przywróć poprzednio wybraną drukarkę z localStorage jeśli istnieje
                     const savedPrinter = localStorage.getItem('printy_printerName');
-                    if (savedPrinter && printers.includes(savedPrinter)) {
-                        printerSelect.value = savedPrinter;
-                    }
+                    if (savedPrinter && printers.includes(savedPrinter)) printerSelect.value = savedPrinter;
                 } else {
                     selectionGroup.classList.add('hidden');
                 }
             }
-        } catch (e) {
-            console.error('Błąd pobierania drukarek:', e);
-        }
+        } catch (e) { console.error('Błąd pobierania drukarek:', e); }
     };
 
     const initApp = async () => {
@@ -155,11 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userCode: savedPin })
                 });
-                if (res.ok) {
-                    verifiedUserCode = savedPin;
-                } else {
-                    localStorage.removeItem('printyUserCode');
-                }
+                if (res.ok) verifiedUserCode = savedPin;
+                else localStorage.removeItem('printyUserCode');
             } catch (e) { /* ignore */ }
         }
         await fetchPrinters();
@@ -167,43 +164,113 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     initApp();
 
-    // Odczyt zapisanych ustawień druku (domyślne dla nowych plików)
+    // Settings keys
     const settingsKeys = ['printerName', 'copies', 'pageRanges', 'scale', 'duplexMode', 'colorMode', 'layout', 'paperSize', 'pagesPerSheet', 'margins'];
-    
-    const getDefaultOptions = () => {
-        const opts = {};
-        settingsKeys.forEach(key => {
-            const val = localStorage.getItem(`printy_${key}`);
-            if (val) opts[key] = val;
-        });
-        opts.fitToPage = localStorage.getItem('printy_fitToPage') === 'true';
-        return opts;
-    };
 
     const loadSavedSettings = () => {
         settingsKeys.forEach(key => {
             const val = localStorage.getItem(`printy_${key}`);
-            if(val) {
-                const el = document.getElementById(key);
-                if (el) el.value = val;
-            }
+            if (val) { const el = document.getElementById(key); if (el) el.value = val; }
         });
         const fitEl = document.getElementById('fitToPage');
-        if(fitEl && localStorage.getItem('printy_fitToPage') === 'true') {
-            fitEl.checked = true;
-        }
+        if (fitEl && localStorage.getItem('printy_fitToPage') === 'true') fitEl.checked = true;
     };
     loadSavedSettings();
 
-    // Automatyczny zapis po edycji
+    // Auto-save settings on change
     document.querySelectorAll('#printModal input, #printModal select').forEach(el => {
         el.addEventListener('change', (e) => {
-            if(e.target.type === 'checkbox') {
-                localStorage.setItem(`printy_${e.target.id}`, e.target.checked);
-            } else {
-                localStorage.setItem(`printy_${e.target.id}`, e.target.value);
-            }
+            if (e.target.type === 'checkbox') localStorage.setItem(`printy_${e.target.id}`, e.target.checked);
+            else localStorage.setItem(`printy_${e.target.id}`, e.target.value);
         });
+    });
+
+    // ====== PREVIEW SYSTEM ======
+    const cleanupPreview = () => {
+        if (currentPreviewUrl) { URL.revokeObjectURL(currentPreviewUrl); currentPreviewUrl = null; }
+        currentPdfDoc = null;
+        currentPage = 1;
+        totalPages = 1;
+        previewCanvas.width = 0;
+        previewCanvas.height = 0;
+        previewCanvas.classList.add('hidden');
+        previewImage.classList.add('hidden');
+        previewImage.src = '';
+        previewPlaceholder.classList.remove('hidden');
+        previewPlaceholder.querySelector('p').textContent = 'Podgląd niedostępny';
+        previewNav.style.visibility = 'hidden';
+        previewPageInfo.textContent = '1 / 1';
+        prevPageBtn.disabled = true;
+        nextPageBtn.disabled = true;
+    };
+
+    const getFileExtension = (name) => (name || '').split('.').pop().toLowerCase();
+    const isImageFile = (ext) => ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+    const isPdfFile = (ext) => ext === 'pdf';
+
+    const renderPreview = async (job) => {
+        cleanupPreview();
+
+        if (job.type === 'url') {
+            previewPlaceholder.querySelector('p').textContent = 'Podgląd URL niedostępny';
+            return;
+        }
+
+        const file = job.payload;
+        const ext = getFileExtension(file.name);
+
+        if (isImageFile(ext)) {
+            currentPreviewUrl = URL.createObjectURL(file);
+            previewPlaceholder.classList.add('hidden');
+            previewCanvas.classList.add('hidden');
+            previewImage.classList.remove('hidden');
+            previewImage.src = currentPreviewUrl;
+            previewNav.style.visibility = 'hidden';
+        } else if (isPdfFile(ext) && window.pdfjsLib) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                currentPdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                totalPages = currentPdfDoc.numPages;
+                currentPage = 1;
+                previewPlaceholder.classList.add('hidden');
+                previewImage.classList.add('hidden');
+                previewCanvas.classList.remove('hidden');
+                previewNav.style.visibility = 'visible';
+                updatePageNav();
+                await renderPdfPage(currentPage);
+            } catch (err) {
+                console.error('PDF preview error:', err);
+                previewPlaceholder.querySelector('p').textContent = 'Błąd ładowania PDF';
+            }
+        } else {
+            previewPlaceholder.querySelector('p').textContent = `Podgląd .${ext} niedostępny`;
+        }
+    };
+
+    const renderPdfPage = async (pageNum) => {
+        if (!currentPdfDoc) return;
+        try {
+            const page = await currentPdfDoc.getPage(pageNum);
+            const scale = 1.5;
+            const viewport = page.getViewport({ scale });
+            previewCanvas.width = viewport.width;
+            previewCanvas.height = viewport.height;
+            const ctx = previewCanvas.getContext('2d');
+            await page.render({ canvasContext: ctx, viewport }).promise;
+        } catch (err) { console.error('PDF page render error:', err); }
+    };
+
+    const updatePageNav = () => {
+        previewPageInfo.textContent = `${currentPage} / ${totalPages}`;
+        prevPageBtn.disabled = currentPage <= 1;
+        nextPageBtn.disabled = currentPage >= totalPages;
+    };
+
+    prevPageBtn.addEventListener('click', async () => {
+        if (currentPage > 1) { currentPage--; updatePageNav(); await renderPdfPage(currentPage); }
+    });
+    nextPageBtn.addEventListener('click', async () => {
+        if (currentPage < totalPages) { currentPage++; updatePageNav(); await renderPdfPage(currentPage); }
     });
 
     // Helpers
@@ -216,13 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- JOB QUEUE MANAGEMENT ---
     const addJobToQueue = (type, payload, name) => {
-        const job = {
-            id: nextJobId++,
-            type,
-            payload,
-            name: name || (type === 'file' ? payload.name : payload),
-            options: null // null = use defaults from modal at print time
-        };
+        const job = { id: nextJobId++, type, payload, name: name || (type === 'file' ? payload.name : payload), options: null };
         jobQueue.push(job);
         renderQueue();
     };
@@ -234,10 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderQueue = () => {
         fileQueueList.innerHTML = '';
-        if (jobQueue.length === 0) {
-            fileQueueSection.classList.add('hidden');
-            return;
-        }
+        if (jobQueue.length === 0) { fileQueueSection.classList.add('hidden'); return; }
         fileQueueSection.classList.remove('hidden');
 
         jobQueue.forEach((job) => {
@@ -269,11 +327,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             actionsDiv.appendChild(editBtn);
             actionsDiv.appendChild(removeBtn);
-
             row.appendChild(nameSpan);
             row.appendChild(statusSpan);
             row.appendChild(actionsDiv);
-
             fileQueueList.appendChild(row);
         });
     };
@@ -284,16 +340,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!job) return;
         editingJobId = id;
 
-        // Załaduj ustawienia tego pliku do modala (lub domyślne)
-        if (job.options) {
-            setModalFromOptions(job.options);
-        } else {
-            loadSavedSettings(); // Domyślne
-        }
+        if (job.options) setModalFromOptions(job.options);
+        else loadSavedSettings();
 
-        modalFileName.textContent = `Ustawienia dla: ${job.name}`;
+        modalFileName.textContent = job.name;
         confirmPrintBtn.textContent = 'Zapisz ustawienia';
         printModal.classList.remove('hidden');
+
+        // Render preview
+        renderPreview(job);
     };
 
     const setModalFromOptions = (opts) => {
@@ -310,36 +365,26 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('fitToPage').checked = !!opts.fitToPage;
     };
 
-    const getPrintOptions = () => {
-        return {
-            printer: document.getElementById('printerName').value,
-            copies: document.getElementById('copies').value,
-            scale: document.getElementById('scale').value,
-            pageRanges: document.getElementById('pageRanges').value,
-            duplex: document.getElementById('duplexMode').value,
-            color: document.getElementById('colorMode').value,
-            layout: document.getElementById('layout').value,
-            paperSize: document.getElementById('paperSize').value,
-            pagesPerSheet: document.getElementById('pagesPerSheet').value,
-            margins: document.getElementById('margins').value,
-            fitToPage: document.getElementById('fitToPage').checked
-        };
-    };
-
-    // More Settings Accordion
-    const toggleMoreSettings = document.getElementById('toggleMoreSettings');
-    const moreSettingsBlock = document.getElementById('moreSettingsBlock');
-    if (toggleMoreSettings) {
-        toggleMoreSettings.addEventListener('click', () => {
-            moreSettingsBlock.classList.toggle('active');
-        });
-    }
+    const getPrintOptions = () => ({
+        printer: document.getElementById('printerName').value,
+        copies: document.getElementById('copies').value,
+        scale: document.getElementById('scale').value,
+        pageRanges: document.getElementById('pageRanges').value,
+        duplex: document.getElementById('duplexMode').value,
+        color: document.getElementById('colorMode').value,
+        layout: document.getElementById('layout').value,
+        paperSize: document.getElementById('paperSize').value,
+        pagesPerSheet: document.getElementById('pagesPerSheet').value,
+        margins: document.getElementById('margins').value,
+        fitToPage: document.getElementById('fitToPage').checked
+    });
 
     // Modal Actions
     const closeModal = () => {
         printModal.classList.add('hidden');
         editingJobId = null;
-        confirmPrintBtn.textContent = 'Drukuj';
+        confirmPrintBtn.textContent = 'Zapisz ustawienia';
+        cleanupPreview();
     };
 
     closeModalBtn.addEventListener('click', closeModal);
@@ -347,13 +392,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     confirmPrintBtn.addEventListener('click', () => {
         const opts = getPrintOptions();
-
         if (editingJobId !== null) {
-            // Zapisujemy ustawienia dla konkretnego pliku
             const job = jobQueue.find(j => j.id === editingJobId);
-            if (job) {
-                job.options = opts;
-            }
+            if (job) job.options = opts;
             closeModal();
             renderQueue();
             showMessage('Ustawienia zapisane dla tego pliku.');
@@ -364,7 +405,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- PRINT ALL ---
     printAllBtn.addEventListener('click', () => {
         if (jobQueue.length === 0) return;
-
         if (verifiedUserCode) {
             submitAllJobs();
         } else {
@@ -386,63 +426,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showMessage(`Wysyłanie ${jobQueue.length} plików...`);
         const defaultOpts = getPrintOptions();
-
-        let successCount = 0;
-        let errorCount = 0;
+        let successCount = 0, errorCount = 0;
 
         for (const job of [...jobQueue]) {
             const opts = job.options || defaultOpts;
-
             try {
                 if (job.type === 'file') {
                     const formData = new FormData();
                     formData.append('file', job.payload);
-                    for (const [key, value] of Object.entries(opts)) {
-                        formData.append(key, value);
-                    }
-
+                    for (const [key, value] of Object.entries(opts)) formData.append(key, value);
                     const response = await fetch('/api/print', {
                         method: 'POST',
                         headers: { 'x-user-code': verifiedUserCode },
                         body: formData
                     });
-                    
-                    if (response.ok) {
-                        successCount++;
-                    } else {
-                        errorCount++;
-                        if(response.status === 403) {
-                            showMessage('Twój PIN jest nieprawidłowy.', true);
-                            return;
-                        }
-                    }
+                    if (response.ok) successCount++;
+                    else { errorCount++; if (response.status === 403) { showMessage('Twój PIN jest nieprawidłowy.', true); return; } }
                 } else if (job.type === 'url') {
                     const body = { ...opts, url: job.payload };
                     const response = await fetch('/api/print-url', {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'x-user-code': verifiedUserCode
-                        },
+                        headers: { 'Content-Type': 'application/json', 'x-user-code': verifiedUserCode },
                         body: JSON.stringify(body)
                     });
-                    
-                    if (response.ok) {
-                        successCount++;
-                    } else {
-                        errorCount++;
-                        if(response.status === 403) {
-                            showMessage('Twój PIN jest nieprawidłowy.', true);
-                            return;
-                        }
-                    }
+                    if (response.ok) successCount++;
+                    else { errorCount++; if (response.status === 403) { showMessage('Twój PIN jest nieprawidłowy.', true); return; } }
                 }
-            } catch (error) {
-                errorCount++;
-            }
+            } catch (error) { errorCount++; }
         }
 
-        // Po wysłaniu czyścimy
         jobQueue = [];
         renderQueue();
         fileInput.value = '';
@@ -450,11 +462,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pinWrapper.classList.add('hidden');
         dropzone.classList.remove('hidden');
 
-        if (errorCount === 0) {
-            showMessage(`Wysłano ${successCount} plik(ów) do systemu drukowania.`);
-        } else {
-            showMessage(`Wysłano ${successCount}, błędy: ${errorCount}`, true);
-        }
+        if (errorCount === 0) showMessage(`Wysłano ${successCount} plik(ów) do systemu drukowania.`);
+        else showMessage(`Wysłano ${successCount}, błędy: ${errorCount}`, true);
     };
 
     // --- DROPZONE & FILE INPUT ---
@@ -466,29 +475,17 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', (e) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
-
         files.forEach(f => addJobToQueue('file', f, f.name));
-
-        // Jeśli 1 plik, od razu otwórz ustawienia
-        if (files.length === 1) {
-            window._editJob(jobQueue[jobQueue.length - 1].id);
-        }
+        if (files.length === 1) window._editJob(jobQueue[jobQueue.length - 1].id);
     });
 
     // Drag and Drop
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropzone.addEventListener(eventName, preventDefaults, false);
+        dropzone.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
     });
-
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
     ['dragenter', 'dragover'].forEach(eventName => {
         dropzone.addEventListener(eventName, () => dropzone.classList.add('dragover'), false);
     });
-
     ['dragleave', 'drop'].forEach(eventName => {
         dropzone.addEventListener(eventName, () => dropzone.classList.remove('dragover'), false);
     });
@@ -497,20 +494,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const dt = e.dataTransfer;
         const files = Array.from(dt.files);
         if (files.length === 0) return;
-
         files.forEach(f => addJobToQueue('file', f, f.name));
-        if (files.length === 1) {
-            window._editJob(jobQueue[jobQueue.length - 1].id);
-        }
+        if (files.length === 1) window._editJob(jobQueue[jobQueue.length - 1].id);
     });
 
     // URL Actions
     urlNextBtn.addEventListener('click', () => {
         const url = urlInput.value.trim();
-        if (!url) {
-            showMessage('Podaj poprawny adres URL linku przed kontynuacją.', true);
-            return;
-        }
+        if (!url) { showMessage('Podaj poprawny adres URL linku przed kontynuacją.', true); return; }
         addJobToQueue('url', url, url);
         urlInput.value = '';
         window._editJob(jobQueue[jobQueue.length - 1].id);
@@ -519,7 +510,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Paste handling
     document.addEventListener('paste', (e) => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
             if (items[i].kind === 'file') {
@@ -528,31 +518,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             } else if (items[i].kind === 'string' && items[i].type === 'text/plain') {
                 items[i].getAsString((str) => {
-                    if (str.startsWith('http://') || str.startsWith('https://')) {
-                        addJobToQueue('url', str, str);
-                    }
+                    if (str.startsWith('http://') || str.startsWith('https://')) addJobToQueue('url', str, str);
                 });
             }
         }
     });
 
     // Admin Panel Actions
-    if(togglePrinterSetup) {
-        togglePrinterSetup.addEventListener('click', () => {
-            printerSetupBlock.classList.toggle('active');
-        });
+    if (togglePrinterSetup) {
+        togglePrinterSetup.addEventListener('click', () => printerSetupBlock.classList.toggle('active'));
     }
 
-    if(setupPrinterBtn) {
+    if (setupPrinterBtn) {
         setupPrinterBtn.addEventListener('click', async () => {
             const printerName = document.getElementById('setupPrinterName').value.trim();
             const ipAddress = document.getElementById('setupPrinterIP').value.trim();
-
-            if (!printerName || !ipAddress) {
-                showMessage('Uzupełnij nazwę drukarki i jej adres IP', true);
-                return;
-            }
-
+            if (!printerName || !ipAddress) { showMessage('Uzupełnij nazwę drukarki i jej adres IP', true); return; }
             showMessage('Trwa dodawanie drukarki do serwera...', false);
             try {
                 const response = await fetch('/api/setup-printer', {
@@ -570,34 +551,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     showMessage(data.error || 'Błąd konfiguracji drukarki', true);
                 }
-            } catch (error) {
-                showMessage('Błąd połączenia z serwerem.', true);
-            }
+            } catch (error) { showMessage('Błąd połączenia z serwerem.', true); }
         });
     }
 
     // Theme Switch Logic
     const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
     const currentTheme = localStorage.getItem('theme');
-
     if (currentTheme) {
         document.body.classList.toggle('dark-mode', currentTheme === 'dark');
-        if (currentTheme === 'dark' && toggleSwitch) {
-            toggleSwitch.checked = true;
-        }
+        if (currentTheme === 'dark' && toggleSwitch) toggleSwitch.checked = true;
     }
-
     const switchTheme = (e) => {
-        if (e.target.checked) {
-            document.body.classList.add('dark-mode');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            document.body.classList.remove('dark-mode');
-            localStorage.setItem('theme', 'light');
-        }    
+        if (e.target.checked) { document.body.classList.add('dark-mode'); localStorage.setItem('theme', 'dark'); }
+        else { document.body.classList.remove('dark-mode'); localStorage.setItem('theme', 'light'); }
     };
-
-    if (toggleSwitch) {
-        toggleSwitch.addEventListener('change', switchTheme, false);
-    }
+    if (toggleSwitch) toggleSwitch.addEventListener('change', switchTheme, false);
 });
