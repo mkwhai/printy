@@ -714,7 +714,7 @@ app.post('/api/setup-printer', authLimiter, checkAdmin, (req, res) => {
     return res.status(400).json({ error: 'Nieprawidłowy adres IP drukarki.' });
   }
 
-  const args = ['-p', printerName.trim(), '-E', '-v', `socket://${ipAddress.trim()}:9100`, '-m', 'everywhere'];
+  const args = ['-p', printerName.trim(), '-E', '-v', `ipp://${ipAddress.trim()}/ipp/print`, '-m', 'everywhere'];
 
   execFile('lpadmin', args, (error, stdout, stderr) => {
     if (error) {
