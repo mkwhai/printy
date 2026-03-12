@@ -252,6 +252,88 @@ const upload = multer({
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '1mb' }));
 
+// --- PDF pre-processing with Ghostscript (for IPP Everywhere compatibility) ---
+const preprocessPdf = (inputPath, options, callback) => {
+  const {
+    scale = '',
+    pagesPerSheet = '1',
+    margins = 'default',
+    layout = 'portrait',
+    color = 'color',
+    paperSize = 'A4',
+    fitToPage = false
+  } = options;
+
+  const safeScale = parseInt(scale, 10);
+  const safePagesPerSheet = parseInt(pagesPerSheet, 10);
+  const needsPreprocess = (
+    (!isNaN(safeScale) && safeScale >= 1 && safeScale <= 200 && safeScale !== 100) ||
+    (!isNaN(safePagesPerSheet) && safePagesPerSheet > 1) ||
+    margins === 'none' ||
+    color === 'bw'
+  );
+
+  if (!needsPreprocess) {
+    return callback(null, inputPath);
+  }
+
+  const ext = path.extname(inputPath).toLowerCase();
+  if (ext !== '.pdf') {
+    // Ghostscript pre-processing only for PDFs; other formats go through CUPS as-is
+    return callback(null, inputPath);
+  }
+
+  const outputPath = inputPath.replace('.pdf', '_processed.pdf');
+
+  // Paper dimensions in points (72 dpi)
+  const paperDimensions = {
+    'A4': [595, 842], 'A3': [842, 1191], 'A5': [420, 595],
+    'Letter': [612, 792], 'Legal': [612, 1008],
+  };
+  const [pageW, pageH] = paperDimensions[paperSize] || paperDimensions['A4'];
+
+  const gsArgs = [
+    '-q', '-dNOPAUSE', '-dBATCH', '-dSAFER',
+    '-sDEVICE=pdfwrite',
+    `-dDEVICEWIDTHPOINTS=${pageW}`,
+    `-dDEVICEHEIGHTPOINTS=${pageH}`,
+    '-dCompatibilityLevel=1.4',
+    `-sOutputFile=${outputPath}`,
+  ];
+
+  // Grayscale conversion
+  if (color === 'bw') {
+    gsArgs.push('-sColorConversionStrategy=Gray', '-dProcessColorModel=/DeviceGray');
+  }
+
+  // Scaling: apply via page scaling
+  if (!isNaN(safeScale) && safeScale >= 1 && safeScale <= 200 && safeScale !== 100) {
+    const factor = safeScale / 100;
+    gsArgs.push('-dFIXEDMEDIA', `-dDEVICEWIDTHPOINTS=${Math.round(pageW * factor)}`, `-dDEVICEHEIGHTPOINTS=${Math.round(pageH * factor)}`);
+    // Override the earlier dimension args - gs uses the last ones
+  }
+
+  // Fit to page
+  if (fitToPage) {
+    gsArgs.push('-dFIXEDMEDIA', '-dPDFFitPage');
+  }
+
+  gsArgs.push('--', inputPath);
+
+  console.log(`Ghostscript pre-processing: gs ${gsArgs.join(' ')}`);
+
+  execFile('gs', gsArgs, { timeout: 60000 }, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Ghostscript error: ${error.message}`);
+      if (stderr) console.error(`Ghostscript stderr: ${stderr}`);
+      // Fallback to original file if preprocessing fails
+      return callback(null, inputPath);
+    }
+    console.log('Ghostscript pre-processing done.');
+    callback(null, outputPath);
+  });
+};
+
 // --- Print logic using CUPS 'lp' command (safe: execFile) ---
 const printFile = (filePath, printerAddress, options, callback) => {
   const {
@@ -267,110 +349,109 @@ const printFile = (filePath, printerAddress, options, callback) => {
     fitToPage = false
   } = options;
 
-  const args = [];
-
-  // Copies (validate as positive integer)
-  const safeCopies = Math.max(1, Math.min(100, parseInt(copies, 10) || 1));
-  args.push('-n', String(safeCopies));
-
-  // We will resolve the actual printer name right before execution to handle fallbacks
-  const targetPrinter = printerAddress && printerAddress.trim() !== '' ? printerAddress : process.env.DEFAULT_PRINTER;
-
-  // Duplex
-  if (['one-sided', 'two-sided-long-edge', 'two-sided-short-edge'].includes(duplex)) {
-    args.push('-o', `sides=${duplex}`);
-  }
-
-  // Color
-  if (color === 'bw') {
-    args.push('-o', 'print-color-mode=monochrome');
-  }
-
-  // Layout
-  if (layout === 'landscape') {
-    args.push('-o', 'orientation-requested=4');
-  }
-
-  // Paper size (validate: only alphanumeric)
-  if (paperSize && /^[a-zA-Z0-9]{1,10}$/.test(paperSize.trim())) {
-    args.push('-o', `media=${paperSize.trim()}`);
-  }
-
-  // Pages per sheet
-  const safePagesPerSheet = parseInt(pagesPerSheet, 10);
-  if (!isNaN(safePagesPerSheet) && safePagesPerSheet > 1 && safePagesPerSheet <= 16) {
-    args.push('-o', `number-up=${safePagesPerSheet}`);
-  }
-
-  // Margins
-  if (margins === 'none') {
-    args.push('-o', 'page-bottom=0', '-o', 'page-top=0', '-o', 'page-left=0', '-o', 'page-right=0');
-  }
-
-  // Page ranges (strict validation)
-  if (pageRanges && pageRanges.trim() !== '') {
-    const cleanRanges = pageRanges.replace(/[^0-9,\-]/g, '');
-    if (cleanRanges && /^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$/.test(cleanRanges)) {
-        args.push('-o', `page-ranges=${cleanRanges}`);
-    }
-  }
-
-  // Fit to page
-  if (fitToPage) {
-    args.push('-o', 'fit-to-page');
-  }
-
-  // Scale (validate: 1-200)
-  const safeScale = parseInt(scale, 10);
-  if (!isNaN(safeScale) && safeScale >= 1 && safeScale <= 200) {
-    args.push('-o', `scaling=${safeScale}`);
-  }
-
-  // File path (already controlled by server, but validate it's within uploads)
+  // File path validation
   const resolvedPath = path.resolve(filePath);
   const uploadsDir = path.resolve(path.join(__dirname, 'uploads'));
   if (!resolvedPath.startsWith(uploadsDir)) {
     return callback(new Error('Nieprawidłowa ścieżka pliku.'));
   }
-  args.push('--', resolvedPath);
-  
-  // Final Printer Resolution
-  execFile('lpstat', ['-e'], (err, stdout) => {
-    let systemsPrinters = [];
-    if (!err && stdout) {
-        systemsPrinters = stdout.trim().split('\n').filter(p => p.trim() !== '');
-    } else {
-        console.warn(`lpstat -e failed: ${err ? err.message : 'no output'}. Proceeding without printer list.`);
+
+  const targetPrinter = printerAddress && printerAddress.trim() !== '' ? printerAddress : process.env.DEFAULT_PRINTER;
+
+  // Pre-process PDF with Ghostscript for IPP Everywhere compatibility
+  preprocessPdf(resolvedPath, options, (prepErr, processedPath) => {
+    const args = [];
+
+    // Copies
+    const safeCopies = Math.max(1, Math.min(100, parseInt(copies, 10) || 1));
+    args.push('-n', String(safeCopies));
+
+    // Duplex (IPP attribute - works with IPP Everywhere)
+    if (['one-sided', 'two-sided-long-edge', 'two-sided-short-edge'].includes(duplex)) {
+      args.push('-o', `sides=${duplex}`);
     }
 
-    let finalPrinter = targetPrinter;
+    // Color mode (IPP attribute)
+    if (color === 'bw') {
+      args.push('-o', 'print-color-mode=monochrome');
+    }
 
-    if (finalPrinter && systemsPrinters.length > 0 && !systemsPrinters.includes(finalPrinter)) {
+    // Layout (IPP attribute)
+    if (layout === 'landscape') {
+      args.push('-o', 'orientation-requested=4');
+    }
+
+    // Paper size (IPP attribute)
+    if (paperSize && /^[a-zA-Z0-9]{1,10}$/.test(paperSize.trim())) {
+      args.push('-o', `media=${paperSize.trim()}`);
+    }
+
+    // Pages per sheet (handled by CUPS filter, should work)
+    const safePagesPerSheet = parseInt(pagesPerSheet, 10);
+    if (!isNaN(safePagesPerSheet) && safePagesPerSheet > 1 && safePagesPerSheet <= 16) {
+      args.push('-o', `number-up=${safePagesPerSheet}`);
+    }
+
+    // Page ranges (IPP attribute)
+    if (pageRanges && pageRanges.trim() !== '') {
+      const cleanRanges = pageRanges.replace(/[^0-9,\-]/g, '');
+      if (cleanRanges && /^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$/.test(cleanRanges)) {
+        args.push('-o', `page-ranges=${cleanRanges}`);
+      }
+    }
+
+    // Fit to page (IPP attribute)
+    if (fitToPage) {
+      args.push('-o', 'print-scaling=fit');
+    }
+
+    // File to print (use processed version if available)
+    args.push('--', processedPath);
+
+    // Resolve printer
+    execFile('lpstat', ['-e'], (err, stdout) => {
+      let systemsPrinters = [];
+      if (!err && stdout) {
+        systemsPrinters = stdout.trim().split('\n').filter(p => p.trim() !== '');
+      } else {
+        console.warn(`lpstat -e failed: ${err ? err.message : 'no output'}. Proceeding without printer list.`);
+      }
+
+      let finalPrinter = targetPrinter;
+
+      if (finalPrinter && systemsPrinters.length > 0 && !systemsPrinters.includes(finalPrinter)) {
         console.log(`Printer "${finalPrinter}" not found in CUPS. Available: [${systemsPrinters.join(', ')}]`);
         finalPrinter = systemsPrinters[0];
         console.log(`Falling back to: ${finalPrinter}`);
-    }
+      }
 
-    const finalArgs = [...args];
-    if (finalPrinter && validatePrinterName(finalPrinter)) {
+      const finalArgs = [...args];
+      if (finalPrinter && validatePrinterName(finalPrinter)) {
         const dashIndex = finalArgs.indexOf('--');
         if (dashIndex !== -1) {
-            finalArgs.splice(dashIndex, 0, '-d', finalPrinter.trim());
+          finalArgs.splice(dashIndex, 0, '-d', finalPrinter.trim());
         } else {
-            finalArgs.push('-d', finalPrinter.trim());
+          finalArgs.push('-d', finalPrinter.trim());
         }
-    }
+      }
 
-    console.log(`Executing print: lp ${finalArgs.join(' ')}`);
+      console.log(`Executing print: lp ${finalArgs.join(' ')}`);
 
-    execFile('lp', finalArgs, (error, lpStdout, stderr) => {
+      execFile('lp', finalArgs, (error, lpStdout, stderr) => {
         if (error) {
-            console.error(`Print error: ${error.message}`);
-            if (stderr) console.error(`Print stderr: ${stderr}`);
-            return callback(error);
+          console.error(`Print error: ${error.message}`);
+          if (stderr) console.error(`Print stderr: ${stderr}`);
+          return callback(error);
         }
         console.log(`Print output: ${lpStdout}`);
+
+        // Clean up processed file if different from original
+        if (processedPath !== resolvedPath) {
+          fs.unlink(processedPath, () => {});
+        }
+
         callback(null, lpStdout, finalPrinter || 'default');
+      });
     });
   });
 };
