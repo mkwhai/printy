@@ -5,6 +5,10 @@ RUN apt-get update && apt-get install -y \
     cups \
     cups-client \
     cups-bsd \
+    printer-driver-brlaser \
+    ghostscript \
+    cups-filters \
+    foomatic-db-engine \
     iproute2 \
     sudo \
     && rm -rf /var/lib/apt/lists/*
