@@ -735,8 +735,8 @@ app.post('/api/setup-printer', authLimiter, checkAdmin, (req, res) => {
     return res.status(400).json({ error: 'Nieprawidłowy adres IP drukarki.' });
   }
 
-  // Use Generic PCL driver via raw socket port 9100 (most compatible for network printers)
-  const args = ['-p', printerName.trim(), '-E', '-v', `socket://${ipAddress.trim()}:9100`, '-m', 'drv:///sample.drv/generpcl.ppd'];
+  // Use IPP Everywhere - the modern standard for network printers (very reliable for Brother)
+  const args = ['-p', printerName.trim(), '-E', '-v', `ipp://${ipAddress.trim()}/ipp/print`, '-m', 'everywhere'];
 
   try {
     execFile('lpadmin', args, (error, stdout, stderr) => {
@@ -745,7 +745,7 @@ app.post('/api/setup-printer', authLimiter, checkAdmin, (req, res) => {
         console.error(`lpadmin stderr: ${stderr}`);
         return res.status(500).json({ error: 'Nie udało się dodać drukarki', details: error.message, stderr });
       }
-      console.log(`Printer added successfully: ${printerName}`);
+      console.log(`Printer added successfully via IPP: ${printerName}`);
       res.json({ success: true, stdout, stderr });
     });
   } catch (err) {
