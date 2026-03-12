@@ -735,8 +735,13 @@ app.post('/api/setup-printer', authLimiter, checkAdmin, (req, res) => {
     return res.status(400).json({ error: 'Nieprawidłowy adres IP drukarki.' });
   }
 
-  // Use IPP Everywhere - the modern standard for network printers (very reliable for Brother)
-  const args = ['-p', printerName.trim(), '-E', '-v', `ipp://${ipAddress.trim()}/ipp/print`, '-m', 'everywhere'];
+  // Use LPD protocol with PXL Mono driver (very stable fallback for Brother printers)
+  const args = [
+    '-p', printerName.trim(), 
+    '-E', 
+    '-v', `lpd://${ipAddress.trim()}/BINARY_P1`, 
+    '-m', 'pxlmono.ppd'
+  ];
 
   try {
     execFile('lpadmin', args, (error, stdout, stderr) => {
@@ -745,7 +750,7 @@ app.post('/api/setup-printer', authLimiter, checkAdmin, (req, res) => {
         console.error(`lpadmin stderr: ${stderr}`);
         return res.status(500).json({ error: 'Nie udało się dodać drukarki', details: error.message, stderr });
       }
-      console.log(`Printer added successfully via IPP: ${printerName}`);
+      console.log(`Printer added successfully via LPD: ${printerName}`);
       res.json({ success: true, stdout, stderr });
     });
   } catch (err) {
