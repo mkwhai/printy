@@ -719,8 +719,11 @@ app.post('/api/setup-printer', authLimiter, checkAdmin, (req, res) => {
 
   execFile('lpadmin', args, (error, stdout, stderr) => {
     if (error) {
-      return res.status(500).json({ error: 'Nie udało się dodać drukarki', details: error.message });
+      console.error(`lpadmin error: ${error.message}`);
+      console.error(`lpadmin stderr: ${stderr}`);
+      return res.status(500).json({ error: 'Nie udało się dodać drukarki', details: error.message, stderr });
     }
+    console.log(`Printer added successfully: ${printerName}`);
     res.json({ success: true, stdout, stderr });
   });
 });
