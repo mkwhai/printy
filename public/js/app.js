@@ -128,20 +128,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 const selectionGroup = document.getElementById('printerSelectionGroup');
                 if (!printerSelect || !selectionGroup) return;
                 if (printers && printers.length > 0) {
-                    selectionGroup.classList.remove('hidden');
+                    // Populate selection
                     printerSelect.innerHTML = '';
                     printers.forEach(p => {
                         const opt = document.createElement('option');
                         opt.value = p;
-                        opt.textContent = p === defaultPrinter ? `${p} (Domyślna)` : p;
-                        if (p === defaultPrinter) opt.selected = true;
+                        opt.textContent = p;
                         printerSelect.appendChild(opt);
                     });
+
+                    // Show list only if there are multiple printers
+                    if (printers.length > 1) {
+                        selectionGroup.classList.remove('hidden');
+                    } else {
+                        selectionGroup.classList.add('hidden');
+                    }
+
+                    // Set default behavior: 1. saved, 2. first in list
                     const savedPrinter = localStorage.getItem('printy_printerName');
                     if (savedPrinter && printers.includes(savedPrinter)) {
                         printerSelect.value = savedPrinter;
-                    } else if (!printerSelect.value && printers.length > 0) {
-                        // If no default matched or saved, pick the first one
+                    } else {
+                        // Default to the first printer in the list
                         printerSelect.value = printers[0];
                     }
                 } else {
