@@ -5,12 +5,16 @@ RUN apt-get update && apt-get install -y \
     cups \
     cups-client \
     cups-bsd \
-    printer-driver-brlaser \
-    ghostscript \
     cups-filters \
+    cups-ipp-utils \
+    ghostscript \
     foomatic-db-engine \
+    printer-driver-brlaser \
     iproute2 \
     sudo \
+    avahi-daemon \
+    avahi-utils \
+    libnss-mdns \
     && rm -rf /var/lib/apt/lists/*
 
 # Add user to lpadmin group for configuring printers without root on CUPS side

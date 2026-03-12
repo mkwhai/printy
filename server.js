@@ -336,19 +336,23 @@ const printFile = (filePath, printerAddress, options, callback) => {
   
   // Final Printer Resolution
   execFile('lpstat', ['-e'], (err, stdout) => {
-    const systemsPrinters = stdout.trim().split('\n').filter(p => p.trim() !== '');
+    let systemsPrinters = [];
+    if (!err && stdout) {
+        systemsPrinters = stdout.trim().split('\n').filter(p => p.trim() !== '');
+    } else {
+        console.warn(`lpstat -e failed: ${err ? err.message : 'no output'}. Proceeding without printer list.`);
+    }
+
     let finalPrinter = targetPrinter;
 
-    if (!systemsPrinters.includes(targetPrinter)) {
-        if (systemsPrinters.length > 0) {
-            finalPrinter = systemsPrinters[0];
-            console.log(`Printer "${targetPrinter}" not found, falling back to: ${finalPrinter}`);
-        }
+    if (finalPrinter && systemsPrinters.length > 0 && !systemsPrinters.includes(finalPrinter)) {
+        console.log(`Printer "${finalPrinter}" not found in CUPS. Available: [${systemsPrinters.join(', ')}]`);
+        finalPrinter = systemsPrinters[0];
+        console.log(`Falling back to: ${finalPrinter}`);
     }
 
     const finalArgs = [...args];
     if (finalPrinter && validatePrinterName(finalPrinter)) {
-        // Find index of '--' and insert '-d printer' before it
         const dashIndex = finalArgs.indexOf('--');
         if (dashIndex !== -1) {
             finalArgs.splice(dashIndex, 0, '-d', finalPrinter.trim());
@@ -359,13 +363,14 @@ const printFile = (filePath, printerAddress, options, callback) => {
 
     console.log(`Executing print: lp ${finalArgs.join(' ')}`);
 
-    execFile('lp', finalArgs, (error, stdout, stderr) => {
+    execFile('lp', finalArgs, (error, lpStdout, stderr) => {
         if (error) {
             console.error(`Print error: ${error.message}`);
+            if (stderr) console.error(`Print stderr: ${stderr}`);
             return callback(error);
         }
-        console.log(`Print output: ${stdout}`);
-        callback(null, stdout, finalPrinter || 'default');
+        console.log(`Print output: ${lpStdout}`);
+        callback(null, lpStdout, finalPrinter || 'default');
     });
   });
 };
@@ -735,12 +740,12 @@ app.post('/api/setup-printer', authLimiter, checkAdmin, (req, res) => {
     return res.status(400).json({ error: 'Nieprawidłowy adres IP drukarki.' });
   }
 
-  // Use RAW socket protocol with PCL6 (pxlmono) driver - standard for most network printers
+  // Use IPP protocol with driverless setup - compatible with most modern printers (inkjet & laser)
   const args = [
-    '-p', printerName.trim(), 
-    '-E', 
-    '-v', `socket://${ipAddress.trim()}:9100`, 
-    '-m', 'lsb/usr/cupsfilters/pxlmono.ppd'
+    '-p', printerName.trim(),
+    '-E',
+    '-v', `ipp://${ipAddress.trim()}/ipp/print`,
+    '-m', 'everywhere'
   ];
 
   try {
